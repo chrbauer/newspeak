@@ -79,6 +79,7 @@ executable newspeak-bootstrap
     build-depends:    base >= 4.16
                     , bytestring
                     , megaparsec
+                    , text
                     , wasm
 
     -- Directories containing source files.

@@ -79,6 +79,7 @@ executable newspeak-bootstrap
     build-depends:    base >= 4.16
                     , bytestring
                     , megaparsec
+                    , parser-combinators
                     , text
                     , wasm
 

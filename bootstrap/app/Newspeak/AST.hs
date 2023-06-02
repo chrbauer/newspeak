@@ -1,8 +1,9 @@
 module Newspeak.AST where
 
 type AST = MathExpr
-data MathExpr = MathExpr MathOp MathExpr MathExpr
-              | MathVal Int
+data MathExpr = MathBinExpr MathOp MathExpr MathExpr
+              | MathInt Integer
+              | MathVar String
               deriving (Show, Eq)
 
 data MathOp = Add | Sub | Mul | Div

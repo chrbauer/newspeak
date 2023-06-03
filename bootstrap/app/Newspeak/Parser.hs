@@ -36,7 +36,7 @@ stringLiteral :: Parser String
 stringLiteral = char '\"' *> manyTill L.charLiteral (char '\"')
 
 block :: Parsec Void Text AST
-block = mathExpr <* eof
+block = (MathExpr <$> mathExpr) <* eof
 
 pKeyword :: Text -> Parser Text
 pKeyword keyword = lexeme (string keyword <* notFollowedBy alphaNumChar)
@@ -45,16 +45,44 @@ pKeyword keyword = lexeme (string keyword <* notFollowedBy alphaNumChar)
 pVariable :: Parser MathExpr
 pVariable = MathVar <$> lexeme
   ((:) <$> letterChar <*> many alphaNumChar <?> "variable")
-
+  
 pInteger :: Parser MathExpr
 pInteger = MathInt <$> lexeme L.decimal
 
 parens :: Parser a -> Parser a
 parens = between (symbol "(") (symbol ")")
 
+ifThenElse :: Parser MathExpr
+ifThenElse = do
+  pKeyword "if"
+  cond <- boolExpr
+  pKeyword "then"
+  thenExpr <- mathExpr
+  pKeyword "else"
+  elseExpr <- mathExpr
+  return $ MathIf cond thenExpr elseExpr
+
+
+boolExpr :: Parser BoolExpr
+boolExpr = boolLit <|> boolVar <|> boolCompare
+
+boolLit :: Parser BoolExpr
+boolLit = BoolLit <$> (pKeyword "True" $> True <|> pKeyword "False" $> False)
+
+boolVar :: Parser BoolExpr
+boolVar = BoolVar <$> lexeme  ((:) <$> letterChar <*> many alphaNumChar <?> "variable")
+
+boolCompare :: Parser BoolExpr
+boolCompare = do
+  left <- mathExpr
+  op <- pKeyword "==" $> Eq <|> pKeyword "<=" $> Leq <|> pKeyword ">=" $> Geq
+  right <- mathExpr
+  return $ BoolCompare left op right
+
 pTerm :: Parser MathExpr
 pTerm = choice
   [ parens mathExpr
+  , ifThenElse
   , pVariable
   , pInteger
   ]

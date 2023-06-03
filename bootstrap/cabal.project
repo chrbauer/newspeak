@@ -1,0 +1,7 @@
+packages: .
+        
+source-repository-package
+  type: git
+  location: https://github.com/chrbauer/haskell-wasm.git
+  tag: e1553e1af5d4742a8176b087100e6fbc205272ce
+  --sha256: hJRHYj74qYO1V8P1N2GLA8MGmE/weTr4TgAPRtj349U=

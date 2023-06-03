@@ -81,7 +81,7 @@ executable newspeak-bootstrap
                     , megaparsec
                     , parser-combinators
                     , text
-                    , wasm
+                    , wasm >= 
 
     -- Directories containing source files.
     hs-source-dirs:   app

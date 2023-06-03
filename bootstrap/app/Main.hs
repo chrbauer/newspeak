@@ -10,11 +10,10 @@ import Language.Wasm.Interpreter
 import Language.Wasm.Validate
 import qualified Data.ByteString.Lazy as BS
 import Text.Megaparsec.Error
--- import Data.ByteString.Char8 (putStrLn)
 
 main :: IO ()
 main = do
-  case parse "6*7" of
+  case parse "if 6 >= 7 then 1 else 2" of
     Left err -> putStrLn $ errorBundlePretty err
     Right ast -> do
       let m = compile ast

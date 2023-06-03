@@ -44,8 +44,18 @@ compile program = genMod $ foldM_  compileAST emptyScope program
         genExpr scope expr =
           case expr of
             MathInt x -> i32c x
+            MathVar x -> case M.lookup x (scopeLocals scope) of
+              Just loc -> load i32 loc 0 32
+              Nothing -> case M.lookup x (scopeParams scope) of
+                Just loc -> load i32 loc 0 32
+                Nothing -> error $ "Variable " ++ x ++ " not found"
             MathIf cond e1 e2 -> 
                 if' (Inline $ Just I32) (compileCond scope cond) (genExpr scope e1) (genExpr scope e2)
+            MathFunCall name args -> do
+              let fn = case M.lookup name (scopeFuncs scope) of
+                    Just fn -> fn 
+                    Nothing -> error $ "Function " ++ name ++ " not found"
+              call fn (map (genExpr scope) args)
             MathBinExpr op x y -> do
                 let x' = genExpr scope x
                     y' = genExpr scope y

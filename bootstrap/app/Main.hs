@@ -38,6 +38,7 @@ run line = do
   case parse line of
     Left err -> putStrLn $ errorBundlePretty err
     Right ast -> do
+      putStrLn $ show ast
       let m = compile ast
       let Right vm = validate m
       let bin = dumpModuleLazy m

@@ -39,7 +39,7 @@ stringLiteral :: Parser String
 stringLiteral = char '\"' *> manyTill L.charLiteral (char '\"')
 
 block :: Parsec Void Text AST
-block =  ((FunDecl <$> funDecl) <|> (MathExpr <$> mathExpr))   <* eof
+block =  sc *> ((FunDecl <$> funDecl) <|> (MathExpr <$> mathExpr))  
 
 identifier :: Parser String
 identifier = lexeme  ((:) <$> letterChar <*> many alphaNumChar <?> "identifier")
@@ -98,6 +98,7 @@ pTerm :: Parser MathExpr
 pTerm = choice
   [ parens mathExpr
   , ifThenElse
+  , funCall
   , pVariable
   , pInteger
   ]
@@ -105,13 +106,20 @@ pTerm = choice
 mathExpr :: Parser MathExpr
 mathExpr = makeExprParser pTerm operatorTable
 
+funCall :: Parser MathExpr
+funCall = try $ do
+  name <- identifier
+  args <- parens $ sepBy mathExpr sc
+  return $ MathFunCall name args
+
 binary :: Text -> MathOp -> Operator Parser MathExpr
 binary  name op = InfixL  (MathBinExpr op <$ symbol name)
 
   
 operatorTable :: [[Operator Parser MathExpr]]
 operatorTable = [
-  [binary "*" Mul]
+  [binary "*" Mul, binary "/" Div],
+  [binary "+" Add, binary "-" Sub]    
   ]
 parse :: Text -> Either (ParseErrorBundle Text Void) [AST]
-parse code = runParser (sepBy block newline) "" code
+parse code = runParser (sepBy block (char ';') <* eof) "" code

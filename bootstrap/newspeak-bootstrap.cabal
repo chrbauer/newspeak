@@ -78,10 +78,11 @@ executable newspeak-bootstrap
     -- Other library packages from which modules are imported.
     build-depends:    base >= 4.16
                     , bytestring
+                    , haskeline
                     , megaparsec
                     , parser-combinators
                     , text
-                    , wasm >= 
+                    , wasm 
 
     -- Directories containing source files.
     hs-source-dirs:   app

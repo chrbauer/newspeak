@@ -7,6 +7,7 @@ data MathExpr = MathBinExpr MathOp MathExpr MathExpr
               | MathInt Integer
               | MathVar String
               | MathIf BoolExpr MathExpr MathExpr
+              | MathFunCall String [MathExpr]
               deriving (Show, Eq)
 
 data BoolExpr = BoolCompare MathExpr CompOp MathExpr

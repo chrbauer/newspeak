@@ -113,5 +113,5 @@ operatorTable :: [[Operator Parser MathExpr]]
 operatorTable = [
   [binary "*" Mul]
   ]
-parse :: Text -> Either (ParseErrorBundle Text Void) AST
-parse code = runParser block "" code
+parse :: Text -> Either (ParseErrorBundle Text Void) [AST]
+parse code = runParser (sepBy block newline) "" code

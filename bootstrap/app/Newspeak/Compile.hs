@@ -12,22 +12,25 @@ import Newspeak.AST
 import Data.Proxy
 import Newspeak.AST (AST(MathExpr, FunDecl))
 import qualified Data.Text.Lazy as TL
+import qualified Data.Text as T
 import qualified Data.Map as M
 
 
 data Scope = Scope {
   scopeParams :: M.Map String (Loc I32),
   scopeLocals :: M.Map String (Loc I32),
-  scopeFuncs :: M.Map String (Loc I32)
+  scopeFuncs :: M.Map String (Fn (Proxy I32))
 }
 
 emptyScope = Scope M.empty M.empty M.empty
 
-compile :: AST -> Module
-compile ast = genMod $ compileAST ast
+compile :: [AST] -> Module
+compile program = genMod $ foldM_  compileAST emptyScope program
   where
-        compileAST (MathExpr expr) =  export "f" $ fun i32  $ ret $ genExpr emptyScope expr
-        compileAST (FunDecl fn) =  genFn fn
+        compileAST scope (MathExpr expr) =  do
+          export "f" $ fun i32  $ ret $ genExpr scope expr
+          return scope
+        compileAST scope (FunDecl fn) =  genFn scope fn
         compileCond _ (BoolLit True) =  i32c 1
         compileCond _ (BoolLit False) =  i32c 0
         compileCond scope (BoolCompare  left op right) =  do
@@ -51,11 +54,13 @@ compile ast = genMod $ compileAST ast
                   Sub -> x' `sub` y'
                   Mul -> x' `mul` y'
                   Div -> x' `div_u` y'
-        genFn (Fun name args body) =  do
-          export (TL.pack name) $ fun i32 $ do
-            args' <-  mapM (\ a ->   (a,) <$> param i32) args        -- args' <- mapM (\ n -> (n,) <$> param i32) args          
-            let  scope = emptyScope { scopeParams = M.fromList args' }
-                 body' = genExpr scope body
-            ret body'
+        genFn scope (Fun name args body) =  do
+            f <- fun i32 $ do
+              args' <-  mapM (\ a ->   (a,) <$> param i32) args    
+              let  scope = scope { scopeParams = M.fromList args'   }
+                   body' = genExpr scope body
+              ret body'
+            export (TL.pack name) f
+            return  $ scope { scopeFuncs = M.insert name f (scopeFuncs scope) }
                
                

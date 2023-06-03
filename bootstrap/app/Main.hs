@@ -18,17 +18,20 @@ import System.Console.Haskeline
 import Control.Monad.IO.Class
 
 main :: IO ()
-main = runInputT defaultSettings loop
+main = runInputT defaultSettings (loop [])
    where
-       loop :: InputT IO ()
-       loop = do
+       loop :: [String] -> InputT IO ()
+       loop p = do
            minput <- getInputLine "% "
            case minput of
                Nothing -> return ()
                Just "quit" -> return ()
-               Just input -> do outputStrLn $ "Input was: " ++ input
-                                liftIO $ run (T.pack input)
-                                loop
+               Just "" ->  do
+                 let input = unlines $ reverse p
+                 outputStrLn $ "Input was: " ++ input               
+                 liftIO $ run (T.pack input)
+                 loop []
+               Just input -> loop (input:p)
 
 run :: Text -> IO ()
 run line = do

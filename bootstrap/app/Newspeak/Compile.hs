@@ -8,13 +8,15 @@ import Language.Wasm.Structure
 import Language.Wasm.Builder
 import Newspeak.AST 
 import Data.Proxy
-import Newspeak.AST (AST(MathExpr))
+import Newspeak.AST (AST(MathExpr, FunDecl))
+import qualified Data.Text.Lazy as TL
 
 
 compile :: AST -> Module
-compile ast = genMod $ export "f" $ fun i32  $ ret (compileAST ast)
+compile ast = genMod $ compileAST ast
   where
-        compileAST (MathExpr expr) =  genExpr expr
+        compileAST (MathExpr expr) =  export "f" $ fun i32  $ ret $ genExpr expr
+        compileAST (FunDecl fn) =  genFn fn
         compileCond (BoolLit True) =  i32c 1
         compileCond (BoolLit False) =  i32c 0
         compileCond (BoolCompare  left op right) =  do
@@ -37,5 +39,8 @@ compile ast = genMod $ export "f" $ fun i32  $ ret (compileAST ast)
                  Sub -> x' `sub` y'
                  Mul -> x' `mul` y'
                  Div -> x' `div_u` y'
+        genFn (Fun name args body) = do
+          let body' = genExpr body          
+          export (TL.pack name) $ fun i32 $ ret body'
                
                

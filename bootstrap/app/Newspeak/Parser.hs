@@ -10,8 +10,11 @@ import Data.Text
 import Data.Functor
 import Newspeak.AST
 import Control.Monad.Combinators.Expr
+import Data.Text as T
+
 
 type Parser = Parsec Void Text
+
 
 
 noWS :: Parser ()
@@ -36,7 +39,19 @@ stringLiteral :: Parser String
 stringLiteral = char '\"' *> manyTill L.charLiteral (char '\"')
 
 block :: Parsec Void Text AST
-block = (MathExpr <$> mathExpr) <* eof
+block =  ((FunDecl <$> funDecl) <|> (MathExpr <$> mathExpr))   <* eof
+
+identifier :: Parser String
+identifier = lexeme  ((:) <$> letterChar <*> many alphaNumChar <?> "identifier")
+
+funDecl :: Parser FunDecl
+funDecl = do
+  symbol "fun"
+  name <- identifier
+  args <- sepBy identifier sc
+  symbol "->"
+  body <- mathExpr
+  return $ Fun name args body
 
 pKeyword :: Text -> Parser Text
 pKeyword keyword = lexeme (string keyword <* notFollowedBy alphaNumChar)
@@ -70,7 +85,7 @@ boolLit :: Parser BoolExpr
 boolLit = BoolLit <$> (pKeyword "True" $> True <|> pKeyword "False" $> False)
 
 boolVar :: Parser BoolExpr
-boolVar = BoolVar <$> lexeme  ((:) <$> letterChar <*> many alphaNumChar <?> "variable")
+boolVar = BoolVar <$> identifier
 
 boolCompare :: Parser BoolExpr
 boolCompare = do

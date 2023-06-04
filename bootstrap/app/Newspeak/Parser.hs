@@ -39,17 +39,16 @@ stringLiteral :: Parser String
 stringLiteral = char '\"' *> manyTill L.charLiteral (char '\"')
 
 block :: Parsec Void Text AST
-block =  sc *> ((FunDecl <$> funDecl) <|> (MathExpr <$> mathExpr))  
+block =  sc *> ((FunDecl <$> try funDecl) <|> (MathExpr <$> mathExpr))  
 
 identifier :: Parser String
 identifier = lexeme  ((:) <$> letterChar <*> many alphaNumChar <?> "identifier")
 
 funDecl :: Parser FunDecl
 funDecl = do
-  symbol "fun"
   name <- identifier
   args <- sepBy identifier sc
-  symbol "->"
+  symbol "="
   body <- mathExpr
   return $ Fun name args body
 
@@ -79,7 +78,7 @@ ifThenElse = do
 
 
 boolExpr :: Parser BoolExpr
-boolExpr = boolLit <|> boolVar <|> boolCompare
+boolExpr =  try boolCompare <|> boolLit <|> boolVar
 
 boolLit :: Parser BoolExpr
 boolLit = BoolLit <$> (pKeyword "True" $> True <|> pKeyword "False" $> False)
@@ -109,7 +108,7 @@ mathExpr = makeExprParser pTerm operatorTable
 funCall :: Parser MathExpr
 funCall = try $ do
   name <- identifier
-  args <- parens $ sepBy mathExpr sc
+  args <- sepBy mathExpr sc
   return $ MathFunCall name args
 
 binary :: Text -> MathOp -> Operator Parser MathExpr

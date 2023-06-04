@@ -69,6 +69,7 @@ executable newspeak-bootstrap
         Newspeak.Parser
         Newspeak.AST
         Newspeak.Compile
+        Newspeak.Core
         
 
     -- LANGUAGE extensions used by modules in this package.
@@ -83,6 +84,7 @@ executable newspeak-bootstrap
                     , megaparsec
                     , mtl
                     , parser-combinators
+                    , prettyprinter
                     , text
                     , wasm 
 

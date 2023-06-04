@@ -1,0 +1,46 @@
+square x = x*x ; square 1
+
+min x y = cases   
+   | x >= y -> y
+   | True   -> x
+
+
+length = matches
+   | []  -> 0
+   | h:t -> 1 + length t
+
+srtm = regex
+   | /^abc/ as (x, y, z) -> 
+
+
+
+main = double 21
+double x = x + x
+
+main = quadruple 20 ;
+quadruple x = let twice_x = x+x
+in twice_x + twice_x
+
+infinite n = letrec ns = cons n ns
+in ns
+
+double_list xs = map (x -> 2*x) xs
+
+f = x y => x+y
+
+Color ::= Blue | Green | Red
+Record ::= { x :: Int, y :: String }
+
+complex ::= Rect num num | Polar num num
+numPair ::= MkNumPair num num
+Tree * ::= Leaf * | Branch (tree *) (tree *)
+
+
+Green
+Rect 3 4
+Branch (Leaf num) (Leaf num)
+
+isRed = matches
+  | Red -> True
+  | Green -> False
+  | Blue -> False

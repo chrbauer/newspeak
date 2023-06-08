@@ -1,6 +1,9 @@
-module Newspeak.Core where
+{-# LANGUAGE OverloadedStrings #-}
 
+module Newspeak.Lang.Core where
 
+import Prettyprinter
+import Prettyprinter.Render.String
 type IsRec = Bool
 type Name = String
 type Tag = Int
@@ -49,38 +52,38 @@ preludeDefs = [
   ("twice", ["f"], EAp (EAp (EVar "compose") (EVar "f")) (EVar "f"))]
 
 
-pprint :: CoreProgram -> String
-pprint = concat . map (pprintSc . tidySc) . coreProgram
+pprint :: CoreProgram -> Doc a
+pprint = vsep . map (pprintSc . tidySc) . coreProgram
 
-pprExpr :: CoreExpr -> String
-pprExpr (ENum n) = show n
-pprExpr (EVar v) = v
-pprExpr (EAp e1 e2) = pprExpr e1 ++ " " ++ pprAExpr e2
-pprExpr (ELet isrec defns expr) = "let " ++ pprLet isrec defns ++ " in " ++ pprExpr expr
-pprExpr (ECase expr alts) = "case " ++ pprExpr expr ++ " of " ++ pprAlts alts
-pprExpr (ELam vars expr) = "\\" ++ unwords vars ++ " -> " ++ pprExpr expr
+pprExpr :: CoreExpr -> Doc a
+pprExpr (ENum n) = viaShow n
+pprExpr (EVar v) = pretty v
+pprExpr (EAp e1 e2) = pprExpr e1 <+> pprAExpr e2
+pprExpr (ELet isrec defns expr) = sep ["let", pprLet isrec defns, "in", pprExpr expr]
+pprExpr (ECase expr alts) = hang 4 $ hsep ["case" <+> pprExpr expr <+> "of", pprAlts alts]
+pprExpr (ELam vars expr) = "\\" <+> sep (map pretty vars) <+> "->" <+> pprExpr expr
 
 
-pprAExpr :: CoreExpr -> String
+pprAExpr :: CoreExpr -> Doc a
 pprAExpr e | isAtomicExpr e = pprExpr e
-pprAExpr e = "(" ++ pprExpr e ++ ")"
+pprAExpr e = "(" <> pprExpr e <> ")"
 
-pprLet :: IsRec -> [(Name, CoreExpr)] -> String
+pprLet :: IsRec -> [(Name, CoreExpr)] -> Doc a
 pprLet False defns = pprDefns defns
-pprLet True defns = "rec " ++ pprDefns defns
+pprLet True defns = "rec" <+> pprDefns defns
 
-pprDefns :: [(Name, CoreExpr)] -> String
-pprDefns defns = unlines [v ++ " = " ++ pprExpr e | (v, e) <- defns]
+pprDefns :: [(Name, CoreExpr)] -> Doc a
+pprDefns defns = hsep [pretty v <+> "=" <+> pprExpr e | (v, e) <- defns]
 
 
-pprAlts :: [CoreAlt] -> String
-pprAlts alts = unlines [pprAlt alt | alt <- alts]
+pprAlts :: [CoreAlt] -> Doc a
+pprAlts alts = hsep [pprAlt alt | alt <- alts]
 
-pprAlt :: CoreAlt -> String
-pprAlt (tag, vars, expr) = "<" ++ show tag ++ "> " ++ unwords vars ++ " -> " ++ pprExpr expr
+pprAlt :: CoreAlt -> Doc a
+pprAlt (tag, vars, expr) = "<" <> viaShow tag <> "> " <+> sep (map pretty vars) <+> "->" <+> pprExpr expr
 
-pprintSc :: CoreScDefn -> String
-pprintSc (name, vars, expr) = name ++ " " ++ unwords vars ++ " = " ++ pprExpr expr ++ "\n"
+pprintSc :: CoreScDefn -> Doc a
+pprintSc (name, vars, expr) = pretty name <+> sep (map pretty vars) <+> "=" <+> pprExpr expr
 
 tidySc :: CoreScDefn -> CoreScDefn
 tidySc (name, vars, expr) = (name, vars, tidyExpr expr)
@@ -95,5 +98,9 @@ tidyExpr (ELam vars expr) = ELam vars (tidyExpr expr)
 
 coreProgram :: Program Name -> Program Name
 coreProgram = map tidySc
+
+
+mkMultiAp :: Int -> CoreExpr -> CoreExpr -> CoreExpr
+mkMultiAp n e1 e2 = foldl EAp e1 (take n $ repeat e2)
 
 

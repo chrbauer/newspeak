@@ -66,10 +66,11 @@ executable newspeak-bootstrap
 
     -- Modules included in this executable, other than Main.
     other-modules:
-        Newspeak.Parser
-        Newspeak.AST
-        Newspeak.Compile
-        Newspeak.Lang.Core
+        Language.Newspeak.Parser
+        Language.Newspeak.AST
+        Language.Newspeak.Compile
+        Language.Newspeak.Core
+        Language.Newspeak.GenCore
         
 
     -- LANGUAGE extensions used by modules in this package.

@@ -1,6 +1,6 @@
 {-# LANGUAGE OverloadedStrings #-}
 
-module Newspeak.Parser where
+module Language.Newspeak.Parser where
 
 import Text.Megaparsec
 import Text.Megaparsec.Char
@@ -8,7 +8,7 @@ import qualified Text.Megaparsec.Char.Lexer as L
 import Data.Void
 import Data.Text
 import Data.Functor
-import Newspeak.AST
+import Language.Newspeak.AST
 import Control.Monad.Combinators.Expr
 import Data.Text as T
 

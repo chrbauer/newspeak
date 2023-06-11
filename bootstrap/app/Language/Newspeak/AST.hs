@@ -1,4 +1,4 @@
-module Newspeak.AST where
+module Language.Newspeak.AST where
 
 import Data.Text (Text)
 

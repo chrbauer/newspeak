@@ -1,16 +1,16 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE DataKinds #-}
 
-module Newspeak.Compile where
+module Language.Newspeak.Compile where
 
 import Control.Monad
 import Control.Monad.State.Strict
-import Newspeak.AST
+import Language.Newspeak.AST
 import Language.Wasm.Structure
 import Language.Wasm.Builder
-import Newspeak.AST 
+import Language.Newspeak.AST 
 import Data.Proxy
-import Newspeak.AST (AST(MathExpr, FunDecl))
+import Language.Newspeak.AST (AST(MathExpr, FunDecl))
 import qualified Data.Text.Lazy as TL
 import qualified Data.Text as T
 import qualified Data.Map as M

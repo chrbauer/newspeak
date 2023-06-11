@@ -1,6 +1,6 @@
 {-# LANGUAGE OverloadedStrings #-}
 
-module Newspeak.Lang.Core where
+module Language.Newspeak.Core where
 
 import Prettyprinter
 import Prettyprinter.Render.String
@@ -59,7 +59,7 @@ pprExpr :: CoreExpr -> Doc a
 pprExpr (ENum n) = viaShow n
 pprExpr (EVar v) = pretty v
 pprExpr (EAp e1 e2) = pprExpr e1 <+> pprAExpr e2
-pprExpr (ELet isrec defns expr) = sep ["let", pprLet isrec defns, "in", pprExpr expr]
+pprExpr (ELet isrec defns expr) = hsep ["let", hang 4 $ pprLet isrec defns, "in", hang 4 $ pprExpr expr]
 pprExpr (ECase expr alts) = hang 4 $ hsep ["case" <+> pprExpr expr <+> "of", pprAlts alts]
 pprExpr (ELam vars expr) = "\\" <+> sep (map pretty vars) <+> "->" <+> pprExpr expr
 

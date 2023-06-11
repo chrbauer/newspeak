@@ -23,3 +23,6 @@ data FunDecl = Fun String [String] MathExpr
 
 data MathOp = Add | Sub | Mul | Div
   deriving (Show, Eq)
+
+type Program = [AST]
+type Name = String

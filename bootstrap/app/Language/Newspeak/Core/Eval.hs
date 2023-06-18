@@ -1,6 +1,6 @@
-module Newspeak.Lang.TemplateInstantiation.Eval where
+module Language.Newspeak.Core.Eval where
 
-import Newspeak.Lang.Core
+import Language.Newspeak.Core
 import Data.Map (Map)
 import qualified Data.Map as Map
 import Data.List (mapAccumL)

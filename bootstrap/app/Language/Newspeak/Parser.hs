@@ -5,13 +5,15 @@ module Language.Newspeak.Parser where
 import Text.Megaparsec
 import Text.Megaparsec.Char
 import qualified Text.Megaparsec.Char.Lexer as L
-import Data.Void
-import Data.Text
-import Data.Functor
+import Data.Void ( Void )
+import Data.Text (Text)
+import Data.Functor ( ($>), void )
 import Language.Newspeak.AST
 import Control.Monad.Combinators.Expr
-import Data.Text as T
-
+    ( Operator(InfixL), makeExprParser )
+import qualified Data.Text as T
+import Control.Applicative ()
+import GHC.Base (inline)
 
 type Parser = Parsec Void Text
 
@@ -21,10 +23,19 @@ noWS :: Parser ()
 noWS = return ()
 
 sc :: Parser ()
-sc = L.space
-  space1                         
-  (L.skipLineComment "#")       
-  (L.skipBlockCommentNested "(*" "*)")
+sc = L.space inlineWS
+      lineComment
+      (L.skipBlockCommentNested "(*" "*)")
+
+
+scn :: Parser ()
+scn = L.space space1 lineComment empty
+
+lineComment :: Parser ()
+lineComment = L.skipLineComment "#"
+
+inlineWS :: Parser ()
+inlineWS = void $ some (char ' ' <|> char '\t')
 
 lexeme :: Parser a -> Parser a
 lexeme = L.lexeme sc
@@ -39,18 +50,11 @@ stringLiteral :: Parser String
 stringLiteral = char '\"' *> manyTill L.charLiteral (char '\"')
 
 block :: Parsec Void Text AST
-block =  sc *> ((FunDecl <$> try funDecl) <|> (MathExpr <$> mathExpr))  
+block =  sc *> ((FunDecl <$> try pFunDecl) <|> (MathExpr <$> pExpr))  
 
 identifier :: Parser String
 identifier = lexeme  ((:) <$> letterChar <*> many alphaNumChar <?> "identifier")
 
-funDecl :: Parser FunDecl
-funDecl = do
-  name <- identifier
-  args <- sepBy identifier sc
-  symbol "="
-  body <- mathExpr
-  return $ Fun name args body
 
 pKeyword :: Text -> Parser Text
 pKeyword keyword = lexeme (string keyword <* notFollowedBy alphaNumChar)
@@ -71,9 +75,9 @@ ifThenElse = do
   pKeyword "if"
   cond <- boolExpr
   pKeyword "then"
-  thenExpr <- mathExpr
+  thenExpr <- pExpr
   pKeyword "else"
-  elseExpr <- mathExpr
+  elseExpr <- pExpr
   return $ MathIf cond thenExpr elseExpr
 
 
@@ -88,27 +92,27 @@ boolVar = BoolVar <$> identifier
 
 boolCompare :: Parser BoolExpr
 boolCompare = do
-  left <- mathExpr
+  left <- pExpr
   op <- pKeyword "==" $> Eq <|> pKeyword "<=" $> Leq <|> pKeyword ">=" $> Geq
-  right <- mathExpr
+  right <- pExpr
   return $ BoolCompare left op right
 
 pTerm :: Parser MathExpr
 pTerm = choice
-  [ parens mathExpr
+  [ parens pExpr
   , ifThenElse
   , funCall
   , pVariable
   , pInteger
   ]
 
-mathExpr :: Parser MathExpr
-mathExpr = makeExprParser pTerm operatorTable
+pExpr :: Parser MathExpr
+pExpr = makeExprParser pTerm operatorTable
 
 funCall :: Parser MathExpr
 funCall = try $ do
   name <- identifier
-  args <- sepBy mathExpr sc
+  args <- sepBy pExpr sc
   return $ MathFunCall name args
 
 binary :: Text -> MathOp -> Operator Parser MathExpr
@@ -120,5 +124,26 @@ operatorTable = [
   [binary "*" Mul, binary "/" Div],
   [binary "+" Add, binary "-" Sub]    
   ]
-parse :: Text -> Either (ParseErrorBundle Text Void) [AST]
-parse code = runParser (sepBy block (char ';') <* eof) "" code
+
+
+
+pModule :: Name -> Parser Module
+pModule name = Module name [] [] <$>  (some (pFunDecl <* scn) <* eof)
+
+
+
+pFunDecl :: Parser FunDecl
+pFunDecl = do
+  name <- identifier
+  args <- sepBy identifier sc
+  symbol "="
+  body <- pExpr
+  return $ Fun name args body
+
+pItem :: Parser String
+pItem = lexeme (some (alphaNumChar <|> char '-')) <?> "list item"
+      
+parse :: Text -> Either (ParseErrorBundle Text Void) Module
+parse code = runParser (pModule "Main" <* scn) "" code
+
+

@@ -68,9 +68,10 @@ executable newspeak-bootstrap
     other-modules:
         Language.Newspeak.Parser
         Language.Newspeak.AST
-        Language.Newspeak.Compile
+        -- Language.Newspeak.Compile
         Language.Newspeak.Core
         Language.Newspeak.GenCore
+        -- Language.Newspeak.Core.Eval
         
 
     -- LANGUAGE extensions used by modules in this package.

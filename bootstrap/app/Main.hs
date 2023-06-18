@@ -3,7 +3,8 @@
 module Main where
 
 import Language.Newspeak.AST
-import Language.Newspeak.Compile
+-- import Language.Newspeak.Compile
+import Language.Newspeak.GenCore
 import Language.Newspeak.Parser
 import Language.Wasm.Binary
 import Language.Wasm.Interpreter
@@ -17,6 +18,7 @@ import System.Environment
 import System.Console.Haskeline
 
 import Control.Monad.IO.Class
+import Language.Newspeak.Core (pprint)
 
 main :: IO ()
 main = do
@@ -49,14 +51,16 @@ run :: Text -> IO ()
 run line = do
   case parse line of
     Left err -> putStrLn $ errorBundlePretty err
-    Right ast -> do
-      putStrLn $ show ast
-      let m = compile ast
-      let Right vm = validate m
-      let bin = dumpModuleLazy m
-      BS.writeFile "m.wasm" bin
-      (Right im, store') <- instantiate emptyStore emptyImports vm
-      r <- invokeExport store' im "main" []  
-      print r
+    Right m -> do
+      putStrLn $ show m
+      --let core = genCore m
+      --putStrLn $ show $ pprint core
+      -- let m = compile ast
+      -- let Right vm = validate m
+      -- let bin = dumpModuleLazy m
+      -- BS.writeFile "m.wasm" bin
+      -- (Right im, store') <- instantiate emptyStore emptyImports vm
+      -- r <- invokeExport store' im "main" []  
+      -- print r
       putStrLn "Done"
   

@@ -26,3 +26,11 @@ data MathOp = Add | Sub | Mul | Div
 
 type Program = [AST]
 type Name = String
+
+data Module =
+  Module { moduleName :: Name
+         , moduleImports :: [Name]
+         , moduleExports :: [Name]
+         , moduleDecls :: [FunDecl]
+         }
+  deriving (Show, Eq)

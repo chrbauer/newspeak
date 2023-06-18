@@ -10,7 +10,7 @@ import Language.Wasm.Structure
 import Language.Wasm.Builder
 import Language.Newspeak.AST 
 import Data.Proxy
-import Language.Newspeak.AST (AST(MathExpr, FunDecl))
+import qualified Language.Newspeak.AST as Newspeak
 import qualified Data.Text.Lazy as TL
 import qualified Data.Text as T
 import qualified Data.Map as M

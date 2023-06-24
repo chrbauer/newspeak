@@ -1,16 +1,16 @@
 module Language.Newspeak.GenCore where
 
 import qualified Language.Newspeak.Core as Core
-import qualified Language.Newspeak.AST as AST
+import qualified Language.Newspeak.AST as Newspeak
 
-genCore :: AST.Program -> Core.Program AST.Name
-genCore = map genDef
+genCore :: Newspeak.Module -> Core.Program Newspeak.Name
+genCore m = map genDef $ Newspeak.moduleDecls m
 
-genDef :: AST.AST -> Core.ScDefn AST.Name
-genDef (AST.FunDecl (AST.Fun name args body)) = (name, args, genExpr body)
+genDef :: Newspeak.FunDecl -> Core.ScDefn Newspeak.Name
+genDef (Newspeak.Fun name args body) = (name, args, genExpr body)
 
 
-genExpr :: AST.MathExpr -> Core.Expr a
-genExpr (AST.MathInt n) = Core.ENum (fromIntegral n)
-genExpr (AST.MathVar v) = Core.EVar v
-genExpr (AST.MathFunCall f args) = foldl (\ r a -> Core.EAp r  (genExpr a)) (Core.EVar f) args
+genExpr :: Newspeak.Expr -> Core.Expr a
+genExpr (Newspeak.ExprLit n) = Core.ENum (fromIntegral n)
+genExpr (Newspeak.ExprVar v) = Core.EVar v
+genExpr (Newspeak.ExprApply f args) = foldl (\ r a -> Core.EAp r  (genExpr a)) (Core.EVar f) args

@@ -2,15 +2,16 @@ module Language.Newspeak.AST where
 
 import Data.Text (Text)
 
-data AST = MathExpr MathExpr | FunDecl FunDecl deriving (Show, Eq)
-data MathExpr = MathBinExpr MathOp MathExpr MathExpr
-              | MathInt Integer
-              | MathVar String
-              | MathIf BoolExpr MathExpr MathExpr
-              | MathFunCall String [MathExpr]
+
+data AST = Expr Expr | FunDecl FunDecl deriving (Show, Eq)
+data Expr = ExprBinOp BinOp Expr Expr
+              | ExprLit Integer
+              | ExprVar String
+              | ExprIf BoolExpr Expr Expr
+              | ExprApply String [Expr]
               deriving (Show, Eq)
 
-data BoolExpr = BoolCompare MathExpr CompOp MathExpr
+data BoolExpr = BoolCompare Expr CompOp Expr
                | BoolLit Bool
                | BoolVar String
               deriving (Show, Eq)
@@ -18,10 +19,10 @@ data BoolExpr = BoolCompare MathExpr CompOp MathExpr
 data CompOp = Eq | Neq | Lt | Gt | Leq | Geq
             deriving (Show, Eq)
 
-data FunDecl = Fun String [String] MathExpr 
+data FunDecl = Fun String [String] Expr 
          deriving (Show, Eq)
 
-data MathOp = Add | Sub | Mul | Div
+data BinOp = Add | Sub | Mul | Div
   deriving (Show, Eq)
 
 type Program = [AST]

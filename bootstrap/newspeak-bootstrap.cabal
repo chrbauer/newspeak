@@ -47,7 +47,7 @@ maintainer:         mail@christoph-bauer.net
 -- copyright:
 category:           Language
 build-type:         Simple
-
+build-tools:         alex, happy
 -- Extra doc files to be distributed with the package, such as a CHANGELOG or a README.
 extra-doc-files:    CHANGELOG.md
 
@@ -68,6 +68,7 @@ executable newspeak-bootstrap
     other-modules:
         Language.Newspeak.Parser
         Language.Newspeak.AST
+        Language.Newspeak.PPrint
         -- Language.Newspeak.Compile
         Language.Newspeak.Core
         Language.Newspeak.GenCore

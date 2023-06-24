@@ -6,9 +6,10 @@ in
 
     # List of packages from the project you want to work on in
     # the shell (default is all the projects local packages).
-    # packages = ps: with ps; [
-      
-    # ];
+    packages = ps: with ps; [
+      wasm
+      prettyprinter
+    ];
 
     # Builds a Hoogle documentation index of all dependencies,
     # and provides a "hoogle" command to search the index.
@@ -16,9 +17,9 @@ in
 
     # Some common tools can be added with the `tools` argument
     tools = {
-      cabal = "latest";
+      cabal = "3.8.1.0";
       hlint = "latest"; # Selects the latest version in the hackage.nix snapshot
-      haskell-language-server = "latest";
+      haskell-language-server = "1.10.0.0";
       happy = "1.20.1.1";
       alex = "3.2.7.4";
     };

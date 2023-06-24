@@ -5,6 +5,7 @@ module Main where
 import Language.Newspeak.AST
 -- import Language.Newspeak.Compile
 import Language.Newspeak.GenCore
+import Language.Newspeak.PPrint
 import Language.Newspeak.Parser
 import Language.Wasm.Binary
 import Language.Wasm.Interpreter
@@ -18,7 +19,7 @@ import System.Environment
 import System.Console.Haskeline
 
 import Control.Monad.IO.Class
-import Language.Newspeak.Core (pprint)
+import qualified Language.Newspeak.Core as Core (pprint)
 
 main :: IO ()
 main = do
@@ -52,9 +53,9 @@ run line = do
   case parse line of
     Left err -> putStrLn $ errorBundlePretty err
     Right m -> do
-      putStrLn $ show m
-      --let core = genCore m
-      --putStrLn $ show $ pprint core
+      putStrLn $ show $ pprint  m
+      let core = genCore m
+      putStrLn $ show $ Core.pprint core
       -- let m = compile ast
       -- let Right vm = validate m
       -- let bin = dumpModuleLazy m

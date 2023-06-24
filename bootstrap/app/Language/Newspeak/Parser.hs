@@ -50,7 +50,7 @@ stringLiteral :: Parser String
 stringLiteral = char '\"' *> manyTill L.charLiteral (char '\"')
 
 block :: Parsec Void Text AST
-block =  sc *> ((FunDecl <$> try pFunDecl) <|> (MathExpr <$> pExpr))  
+block =  sc *> ((FunDecl <$> try pFunDecl) <|> (Expr <$> pExpr))  
 
 identifier :: Parser String
 identifier = lexeme  ((:) <$> letterChar <*> many alphaNumChar <?> "identifier")
@@ -60,17 +60,17 @@ pKeyword :: Text -> Parser Text
 pKeyword keyword = lexeme (string keyword <* notFollowedBy alphaNumChar)
 
 
-pVariable :: Parser MathExpr
-pVariable = MathVar <$> lexeme
+pVariable :: Parser Expr
+pVariable = ExprVar <$> lexeme
   ((:) <$> letterChar <*> many alphaNumChar <?> "variable")
   
-pInteger :: Parser MathExpr
-pInteger = MathInt <$> lexeme L.decimal
+pInteger :: Parser Expr
+pInteger = ExprLit <$> lexeme L.decimal
 
 parens :: Parser a -> Parser a
 parens = between (symbol "(") (symbol ")")
 
-ifThenElse :: Parser MathExpr
+ifThenElse :: Parser Expr
 ifThenElse = do
   pKeyword "if"
   cond <- boolExpr
@@ -78,7 +78,7 @@ ifThenElse = do
   thenExpr <- pExpr
   pKeyword "else"
   elseExpr <- pExpr
-  return $ MathIf cond thenExpr elseExpr
+  return $ ExprIf cond thenExpr elseExpr
 
 
 boolExpr :: Parser BoolExpr
@@ -97,7 +97,7 @@ boolCompare = do
   right <- pExpr
   return $ BoolCompare left op right
 
-pTerm :: Parser MathExpr
+pTerm :: Parser Expr
 pTerm = choice
   [ parens pExpr
   , ifThenElse
@@ -106,20 +106,20 @@ pTerm = choice
   , pInteger
   ]
 
-pExpr :: Parser MathExpr
+pExpr :: Parser Expr
 pExpr = makeExprParser pTerm operatorTable
 
-funCall :: Parser MathExpr
+funCall :: Parser Expr
 funCall = try $ do
   name <- identifier
   args <- sepBy pExpr sc
-  return $ MathFunCall name args
+  return $ ExprApply name args
 
-binary :: Text -> MathOp -> Operator Parser MathExpr
-binary  name op = InfixL  (MathBinExpr op <$ symbol name)
+binary :: Text -> BinOp -> Operator Parser Expr
+binary  name op = InfixL  (ExprBinOp op <$ symbol name)
 
   
-operatorTable :: [[Operator Parser MathExpr]]
+operatorTable :: [[Operator Parser Expr]]
 operatorTable = [
   [binary "*" Mul, binary "/" Div],
   [binary "+" Add, binary "-" Sub]    

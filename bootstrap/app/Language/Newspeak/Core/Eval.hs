@@ -174,7 +174,14 @@ instantiate (EAp e1 e2) heap env = heapAlloc heap2 (NAp a1 a2)
     (heap2, a2) = instantiate e2 heap1 env
 instantiate (EVar v) heap env = (heap, Map.findWithDefault (error ("Undefined name " ++ show v)) v env)
 instantiate (EConstr tag arity) heap env = undefined -- instantiateConstr tag arity heap env
-instantiate (ELet isrec defs body) heap env = undefined -- instantiateLet isrec defs body heap env
+instantiate (ELet isrec defs body) heap env = instantiateLet isrec defs body heap env
 instantiate (ECase e alts) heap env = error "Can't instantiate case exprs"
 
-
+instantiateLet :: IsRec -> [(Name, CoreExpr)] -> CoreExpr -> TiHeap -> TiGlobals -> (TiHeap, Addr)
+instantiateLet isrec defs body heap env = instantiate body heap' env'
+  where
+    (heap', extraBindings) = mapAccumL instantiateDef heap defs
+    env' = if isrec then Map.union (Map.fromList extraBindings) env else env
+    instantiateDef heap (name, expr) = (heap', (name, addr))
+      where
+        (heap', addr) = instantiate expr heap env'

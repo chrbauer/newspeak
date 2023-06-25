@@ -113,12 +113,13 @@ pExpr = makeExprParser pTerm operatorTable
 pLet :: Parser Expr
 pLet = L.indentBlock scn p
   where p = do
-          pKeyword "let"
-          return $ L.IndentSome Nothing expr pFunDecl
-        expr env = do
+          h <- L.lineFold scn $ \sc' -> pKeyword "let" *> sc' *> pFunDecl
+          return $ L.IndentMany Nothing (expr h) pFunDecl
+        expr  h env = do
           pKeyword "in"
           body <- pExpr
-          return $ ExprLet env body
+          return $ ExprLet (h:env) body
+
 
 funCall :: Parser Expr
 funCall = try $ do

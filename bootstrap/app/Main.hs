@@ -20,6 +20,7 @@ import System.Console.Haskeline
 
 import Control.Monad.IO.Class
 import qualified Language.Newspeak.Core as Core (pprint)
+import qualified Language.Newspeak.Core.Eval as Core (eval, compile, showResults)
 
 main :: IO ()
 main = do
@@ -54,8 +55,13 @@ run line = do
     Left err -> putStrLn $ errorBundlePretty err
     Right m -> do
       putStrLn $ show $ pprint  m
+      putStrLn $ show m
       let core = genCore m
+      putStrLn $ show core
       putStrLn $ show $ Core.pprint core
+      let eval = Core.eval (Core.compile core)
+      putStrLn $ show $ Core.showResults $ eval
+      
       -- let m = compile ast
       -- let Right vm = validate m
       -- let bin = dumpModuleLazy m

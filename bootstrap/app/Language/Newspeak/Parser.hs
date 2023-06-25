@@ -112,8 +112,15 @@ pExpr = makeExprParser pTerm operatorTable
 funCall :: Parser Expr
 funCall = try $ do
   name <- identifier
-  args <- sepBy pExpr sc
+  args <- sepBy pArg sc
   return $ ExprApply name args
+
+pArg :: Parser Expr
+pArg = choice [
+      parens pExpr
+    , pVariable
+    , pInteger
+    ]
 
 binary :: Text -> BinOp -> Operator Parser Expr
 binary  name op = InfixL  (ExprBinOp op <$ symbol name)

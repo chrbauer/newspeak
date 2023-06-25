@@ -17,9 +17,9 @@ in
 
     # Some common tools can be added with the `tools` argument
     tools = {
-      cabal = "3.8.1.0";
+      cabal = "latest";
       hlint = "latest"; # Selects the latest version in the hackage.nix snapshot
-      haskell-language-server = "1.10.0.0";
+      haskell-language-server = "latest";
       happy = "1.20.1.1";
       alex = "3.2.7.4";
     };
@@ -36,5 +36,5 @@ in
 
     # Prevents cabal from choosing alternate plans, so that
     # *all* dependencies are provided by Nix.
-    exactDeps = true;
+    # exactDeps = true;
   }

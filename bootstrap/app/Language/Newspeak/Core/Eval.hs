@@ -51,17 +51,21 @@ compile program = (initialStack, initialTiDump, initialHeap, globals, tiStatInit
 
 
 
-showResults :: [TiState] -> Doc ann
-showResults states = vsep (map showState states) <> showStats (last states)
+showSteps :: [TiState] -> Doc ann
+showSteps states =
+  vsep (map showStep $ zip [0..] states) <> line <> showStats (last states)
+
+showStep :: (Int, TiState) -> Doc ann
+showStep (nr, state) = nest 4 $ pretty "Step" <+> pretty nr <> colon <> line <> showState state
 
 showState :: TiState -> Doc ann
 showState (stack, dump, heap, globals, stats) = 
-  vsep [align $ pretty "Stack:[" <> showStack heap stack <> rbracket,
-        pretty "Heap:" <> showHeap heap,
-        pretty "Globals:" <> showGlobals globals]
+  vsep [pretty "Stack:" <+> showStack heap stack,
+        nest 4 $ pretty "Heap:" <> line <> showHeap heap,
+        nest 4 $ pretty "Globals:" <> line <> showGlobals globals]
 
 showStack :: TiHeap -> TiStack -> Doc ann
-showStack heap stack = hsep (map (showStackItem heap) stack)
+showStack heap stack = encloseSep lbracket rbracket space (map (showStackItem heap) stack)
 
 showStackItem :: TiHeap -> Addr -> Doc ann
 showStackItem heap addr = showNode heap (heapLookup heap addr)
@@ -71,7 +75,7 @@ showNode heap ap@(NAp funAddr argAddr) = viaShow ap
   --showNode heap (heapLookup heap funAddr) <+> showNode heap (heapLookup heap argAddr)
 
 showNode heap (NSupercomb name args body) =
-  pretty "Supercomb:" <+> pretty name <+> hsep (map pretty args) <> line <> viaShow body -- showNode heap  body
+  pretty "Supercomb:" <+> pretty name <+> hsep (map pretty args) <+> equals  <+> viaShow body -- showNode heap  body
 
 showNode _ (NNum n) = pretty n
 
@@ -168,7 +172,7 @@ instantiate (EAp e1 e2) heap env = heapAlloc heap2 (NAp a1 a2)
   where
     (heap1, a1) = instantiate e1 heap env
     (heap2, a2) = instantiate e2 heap1 env
-instantiate (EVar v) heap env = (heap, Map.findWithDefault (error ("Undefined name " ++ show v ++ "   " ++ show env)) v env)
+instantiate (EVar v) heap env = (heap, Map.findWithDefault (error ("Undefined name " ++ show v)) v env)
 instantiate (EConstr tag arity) heap env = undefined -- instantiateConstr tag arity heap env
 instantiate (ELet isrec defs body) heap env = undefined -- instantiateLet isrec defs body heap env
 instantiate (ECase e alts) heap env = error "Can't instantiate case exprs"

@@ -9,6 +9,7 @@ data Expr = ExprBinOp BinOp Expr Expr
               | ExprVar String
               | ExprIf BoolExpr Expr Expr
               | ExprApply String [Expr]
+              | ExprLet [FunDecl] Expr
               deriving (Show, Eq)
 
 data BoolExpr = BoolCompare Expr CompOp Expr

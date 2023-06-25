@@ -101,6 +101,7 @@ pTerm :: Parser Expr
 pTerm = choice
   [ parens pExpr
   , ifThenElse
+  , pLet
   , funCall
   , pVariable
   , pInteger
@@ -108,6 +109,16 @@ pTerm = choice
 
 pExpr :: Parser Expr
 pExpr = makeExprParser pTerm operatorTable
+
+pLet :: Parser Expr
+pLet = L.indentBlock scn p
+  where p = do
+          pKeyword "let"
+          return $ L.IndentSome Nothing expr pFunDecl
+        expr env = do
+          pKeyword "in"
+          body <- pExpr
+          return $ ExprLet env body
 
 funCall :: Parser Expr
 funCall = try $ do
@@ -135,7 +146,7 @@ operatorTable = [
 
 
 pModule :: Name -> Parser Module
-pModule name = Module name [] [] <$>  (some (pFunDecl <* scn) <* eof)
+pModule name = Module name [] [] <$>  (some (pTopLevel <* scn) <* eof)
 
 
 
@@ -146,6 +157,9 @@ pFunDecl = do
   symbol "="
   body <- pExpr
   return $ Fun name args body
+
+pTopLevel :: Parser FunDecl
+pTopLevel = L.nonIndented scn pFunDecl
 
 pItem :: Parser String
 pItem = lexeme (some (alphaNumChar <|> char '-')) <?> "list item"

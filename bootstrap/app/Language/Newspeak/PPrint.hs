@@ -16,5 +16,7 @@ pprintExpr :: Expr -> Doc ann
 pprintExpr (ExprVar name) = pretty name
 pprintExpr (ExprLit lit) = pretty lit
 pprintExpr (ExprApply f args) = pretty f <+> hsep (map pprintExpr args)
+pprintExpr (ExprLet binds expr) = align $ pretty "let"  <+> (vsep $ map pprintDecl binds) <+> pretty "in" <+> pprintExpr expr
+
 
 

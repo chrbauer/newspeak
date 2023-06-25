@@ -14,7 +14,7 @@ type TiHeap = Heap Node
 data Node = NAp Addr Addr
           | NSupercomb Name [Name] CoreExpr
           | NNum Int
-          -- | NInd Addr
+          | NInd Addr
           -- | NPrim Name Primitive
           -- | NData Int [Addr]
           -- | NMarked Node
@@ -39,6 +39,8 @@ heapAlloc :: TiHeap -> Node -> (TiHeap, Addr)
 heapAlloc (Heap addr heap) node = (Heap (addr + 1) (Map.insert addr node heap), addr)
 heapLookup :: TiHeap -> Addr -> Node
 heapLookup (Heap _ heap) addr = heap Map.! addr
+heapUpdate :: TiHeap -> Addr -> Node -> TiHeap
+heapUpdate (Heap addr heap) addr' node = Heap addr (Map.insert addr' node heap)
 
 compile :: CoreProgram -> TiState
 compile program = (initialStack, initialTiDump, initialHeap, globals, tiStatInitial)
@@ -78,6 +80,7 @@ showNode heap (NSupercomb name args body) =
   pretty "Supercomb:" <+> pretty name <+> hsep (map pretty args) <+> equals  <+> viaShow body -- showNode heap  body
 
 showNode _ (NNum n) = pretty n
+showNode heap (NInd addr) = pretty "Indirection:" <+> pretty addr 
 
 showHeap :: TiHeap -> Doc ann
 showHeap h@(Heap _ heap) = vsep (map (showHeapItem h) (Map.toList heap))
@@ -144,6 +147,11 @@ step state = dispatch (heapLookup heap (head stack))
     dispatch (NNum n) = numStep state n
     dispatch (NAp a1 a2) = apStep state a1 a2
     dispatch (NSupercomb sc args body) = scStep state sc args body
+    dispatch (NInd a1) = indStep state a1
+
+
+indStep :: TiState -> Addr -> TiState
+indStep (a:stack, dump, heap, globals, stats) a1 = (a1 : stack, dump, heap, globals, stats)
 
 numStep :: TiState -> Int -> TiState
 numStep state n = error "Number applied as a function!"
@@ -152,10 +160,12 @@ apStep :: TiState -> Addr -> Addr -> TiState
 apStep (stack, dump, heap, globals, stats) a1 a2 = (a1 : stack, dump, heap, globals, stats)
 
 scStep :: TiState -> Name -> [Name] -> CoreExpr -> TiState
-scStep (stack, dump, heap, globals, stats) scName argNames body = (newStack, dump, newHeap, globals, stats)
+scStep (stack, dump, heap, globals, stats) scName argNames body = (newStack, dump, newHeap', globals, stats)
   where
-    newStack = resultAddr : drop (length argNames + 1) stack
+    (aN:tailStack) = drop (length argNames) stack
+    newStack = resultAddr : tailStack    
     (newHeap, resultAddr) = instantiate body heap env
+    newHeap' = heapUpdate newHeap aN (NInd resultAddr)
     env = Map.union (Map.fromList argBindings) globals
     argBindings = zip argNames (getargs heap stack)
 

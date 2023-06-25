@@ -1,0 +1,4 @@
+compose f g x = f (g x) 
+twice f = compose f f 
+id x = x
+main = twice twice twice id 3

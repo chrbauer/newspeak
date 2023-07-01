@@ -160,12 +160,10 @@ apStep :: TiState -> Addr -> Addr -> TiState
 apStep (stack, dump, heap, globals, stats) a1 a2 = (a1 : stack, dump, heap, globals, stats)
 
 scStep :: TiState -> Name -> [Name] -> CoreExpr -> TiState
-scStep (stack, dump, heap, globals, stats) scName argNames body = (newStack, dump, newHeap', globals, stats)
+scStep (stack, dump, heap, globals, stats) scName argNames body = (newStack, dump, newHeap, globals, stats)
   where
-    (aN:tailStack) = drop (length argNames) stack
-    newStack = resultAddr : tailStack    
-    (newHeap, resultAddr) = instantiate body heap env
-    newHeap' = heapUpdate newHeap aN (NInd resultAddr)
+    newStack@(aN:_) = drop (length argNames) stack
+    newHeap = instantiateAndUpdate body aN heap env
     env = Map.union (Map.fromList argBindings) globals
     argBindings = zip argNames (getargs heap stack)
 
@@ -195,3 +193,22 @@ instantiateLet isrec defs body heap env = instantiate body heap' env'
     instantiateDef heap (name, expr) = (heap', (name, addr))
       where
         (heap', addr) = instantiate expr heap env'
+
+instantiateAndUpdate :: CoreExpr -> Addr -> TiHeap -> TiGlobals -> TiHeap
+instantiateAndUpdate (EAp e1 e2) updAddr heap env = heap3
+  where
+    (heap1, a1) = instantiate e1 heap env
+    (heap2, a2) = instantiate e2 heap1 env
+    heap3 = heapUpdate heap2 updAddr (NAp a1 a2)
+instantiateAndUpdate var@(EVar v) updAddr heap env = newHeap
+  where 
+     (heap', resultAddr) = instantiate var heap env
+     newHeap = heapUpdate heap updAddr (NInd resultAddr) 
+
+instantiateAndUpdate (ENum n) updAddr heap env = heapUpdate heap updAddr (NNum n)
+instantiateAndUpdate (EConstr tag arity) updAddr heap env = undefined -- instantiateConstr tag arity heap env
+instantiateAndUpdate (ELet isrec defs body) updAddr heap env = heapUpdate heap' updAddr (NInd a)
+  where (heap', a) = instantiateLet isrec defs body heap env
+instantiateAndUpdate (ECase e alts) updAddr heap env = error "Can't instantiate case"
+
+

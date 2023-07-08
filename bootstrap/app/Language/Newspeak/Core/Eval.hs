@@ -9,13 +9,13 @@ import Prettyprinter
 type TiState = (TiStack, TiDump, TiHeap, TiGlobals, TiStats)
 type TiStack = [Addr]
 type Addr = Int
-data TiDump = DummyTiDump deriving Show
+type TiDump = [TiStack]
 type TiHeap = Heap Node
 data Node = NAp Addr Addr
           | NSupercomb Name [Name] CoreExpr
           | NNum Int
           | NInd Addr
-          -- | NPrim Name Primitive
+          | NPrim PrimOp
           -- | NData Int [Addr]
           -- | NMarked Node
           deriving Show
@@ -24,7 +24,7 @@ type TiGlobals = Map Name Addr
 type TiStats = Int
 data Heap a = Heap Addr (Map Addr a) deriving Show
 
-initialTiDump = DummyTiDump
+initialTiDump = []
 tiStatInitial :: TiStats
 tiStatInitial = 0
 tiStaIncSteps :: TiStats -> TiStats
@@ -80,7 +80,9 @@ showNode heap (NSupercomb name args body) =
   pretty "Supercomb:" <+> pretty name <+> hsep (map pretty args) <+> equals  <+> viaShow body -- showNode heap  body
 
 showNode _ (NNum n) = pretty n
-showNode heap (NInd addr) = pretty "Indirection:" <+> pretty addr 
+showNode heap (NInd addr) = pretty "Indirection:" <+> pretty addr
+
+showNode _ (NPrim p) = pretty "PrimOp:" <+> viaShow p
 
 showHeap :: TiHeap -> Doc ann
 showHeap h@(Heap _ heap) = vsep (map (showHeapItem h) (Map.toList heap))
@@ -132,7 +134,7 @@ doAdmin :: TiState -> TiState
 doAdmin state = applyToStats tiStaIncSteps state
 
 tiFinal :: TiState -> Bool
-tiFinal ([soleAddr], dump, heap, globals, stats) = isDataNode (heapLookup heap soleAddr)
+tiFinal ([soleAddr], [], heap, globals, stats) = isDataNode (heapLookup heap soleAddr)
 tiFinal ([], dump, heap, globals, stats) = error "Empty stack!"
 tiFinal state = False
 
@@ -148,13 +150,31 @@ step state = dispatch (heapLookup heap (head stack))
     dispatch (NAp a1 a2) = apStep state a1 a2
     dispatch (NSupercomb sc args body) = scStep state sc args body
     dispatch (NInd a1) = indStep state a1
+    dispatch (NPrim p) = primStep state p
+    
+
+
+primStep :: TiState -> PrimOp -> TiState
+primStep  (stack@(arg:[]), dump, heap, globals, stats) Neg = 
+  case heapLookup heap b of
+    NNum n ->
+      let heap' = heapUpdate heap arg (NNum (-n))
+      in (stack, dump, heap', globals, stats)
+    NInd a3 ->
+      let heap' = heapUpdate heap arg (NAp arg a3)
+      in (stack, dump, heap', globals, stats)
+    _ -> ([b], [arg]:dump, heap, globals, stats)
+  where
+    (NAp a b) = heapLookup heap arg
+
 
 
 indStep :: TiState -> Addr -> TiState
 indStep (a:stack, dump, heap, globals, stats) a1 = (a1 : stack, dump, heap, globals, stats)
 
 numStep :: TiState -> Int -> TiState
-numStep state n = error "Number applied as a function!"
+numStep (stack, [], heap, globals, stats) n = error "Number applied as a function!"
+numStep (stack, s:dump, heap, globals, stats) n = (s, dump, heap, globals, stats)
 
 apStep :: TiState -> Addr -> Addr -> TiState
 apStep (stack, dump, heap, globals, stats) a1 a2 = (a1 : stack, dump, heap, globals, stats)
@@ -184,6 +204,8 @@ instantiate (EVar v) heap env = (heap, Map.findWithDefault (error ("Undefined na
 instantiate (EConstr tag arity) heap env = undefined -- instantiateConstr tag arity heap env
 instantiate (ELet isrec defs body) heap env = instantiateLet isrec defs body heap env
 instantiate (ECase e alts) heap env = error "Can't instantiate case exprs"
+
+
 
 instantiateLet :: IsRec -> [(Name, CoreExpr)] -> CoreExpr -> TiHeap -> TiGlobals -> (TiHeap, Addr)
 instantiateLet isrec defs body heap env = instantiate body heap' env'

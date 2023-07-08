@@ -1,0 +1,3 @@
+
+I x = x
+main = negate (I 3)

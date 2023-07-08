@@ -15,7 +15,7 @@ data Expr a = EVar Name | ENum Int | EConstr Int Int | EAp (Expr a) (Expr a)
   | ELet IsRec [(a, Expr a)] (Expr a)
   | ECase (Expr a) [Alter a]
   | ELam [a] (Expr a)
-  | EPrim PrimOp
+  | EPrim Primitive
   deriving (Show, Eq)
 
 type Program a = [ScDefn a]
@@ -23,7 +23,7 @@ type CoreProgram = Program Name
 type ScDefn a = (Name, [a], Expr a)
 type CoreScDefn = ScDefn Name
 type CoreExpr = Expr Name
-data PrimOp = Neg deriving (Show, Eq)
+data Primitive = Neg | Add | Sub | Mul | Div deriving (Show, Eq)
 
 recursive = True
 nonRecursive = False

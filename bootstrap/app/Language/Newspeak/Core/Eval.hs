@@ -15,7 +15,7 @@ data Node = NAp Addr Addr
           | NSupercomb Name [Name] CoreExpr
           | NNum Int
           | NInd Addr
-          | NPrim PrimOp
+          | NPrim Name Primitive
           -- | NData Int [Addr]
           -- | NMarked Node
           deriving Show
@@ -24,6 +24,7 @@ type TiGlobals = Map Name Addr
 type TiStats = Int
 data Heap a = Heap Addr (Map Addr a) deriving Show
 
+initialTiDump :: TiDump
 initialTiDump = []
 tiStatInitial :: TiStats
 tiStatInitial = 0
@@ -67,7 +68,7 @@ showState (stack, dump, heap, globals, stats) =
         nest 4 $ pretty "Globals:" <> line <> showGlobals globals]
 
 showStack :: TiHeap -> TiStack -> Doc ann
-showStack heap stack = encloseSep lbracket rbracket space (map (showStackItem heap) stack)
+showStack heap stack = encloseSep lbracket rbracket (pretty ", ") (map (showStackItem heap) stack)
 
 showStackItem :: TiHeap -> Addr -> Doc ann
 showStackItem heap addr = showNode heap (heapLookup heap addr)
@@ -82,7 +83,7 @@ showNode heap (NSupercomb name args body) =
 showNode _ (NNum n) = pretty n
 showNode heap (NInd addr) = pretty "Indirection:" <+> pretty addr
 
-showNode _ (NPrim p) = pretty "PrimOp:" <+> viaShow p
+showNode _ (NPrim name p) = pretty "PrimOp:" <+> pretty name
 
 showHeap :: TiHeap -> Doc ann
 showHeap h@(Heap _ heap) = vsep (map (showHeapItem h) (Map.toList heap))
@@ -112,16 +113,30 @@ extraPreludeDefs :: CoreProgram
 extraPreludeDefs = []
 
 buildInitialHeap :: [CoreScDefn] -> (TiHeap, TiGlobals)
-buildInitialHeap scDefs = (heap1, Map.fromList scAddrs)
+buildInitialHeap scDefs = (heap2, Map.fromList $ scAddrs ++ primAddrs)
   where
     (heap1, scAddrs) = mapAccumL allocateSc initialHeap scDefs
-    -- (heap2, primAddrs) = mapAccumL allocatePrim heap1 primitives
+    (heap2, primAddrs) = mapAccumL allocatePrim heap1 primitives
+
+
+primitives :: [(Name, Primitive)]
+primitives = [ ("negate", Neg),
+               ("+", Add),
+               ("-", Sub),
+               ("*", Mul),
+               ("/", Div)              
+             ]
 
   
 allocateSc :: TiHeap -> CoreScDefn -> (TiHeap, (Name, Addr))
 allocateSc heap (name, args, body) = (heap', (name, addr))
   where
     (heap', addr) = heapAlloc heap (NSupercomb name args body)
+
+allocatePrim :: TiHeap -> (Name, Primitive) -> (TiHeap, (Name, Addr))
+allocatePrim heap (name, prim) = (heap', (name, addr))
+  where
+    (heap', addr) = heapAlloc heap (NPrim name prim)
     
 eval :: TiState -> [TiState]
 eval state = state : restStates
@@ -150,23 +165,25 @@ step state = dispatch (heapLookup heap (head stack))
     dispatch (NAp a1 a2) = apStep state a1 a2
     dispatch (NSupercomb sc args body) = scStep state sc args body
     dispatch (NInd a1) = indStep state a1
-    dispatch (NPrim p) = primStep state p
+    dispatch (NPrim _ p) = primStep state p
     
 
+primStep :: TiState -> Primitive -> TiState
+primStep state Neg = primNeg state
 
-primStep :: TiState -> PrimOp -> TiState
-primStep  (stack@(arg:[]), dump, heap, globals, stats) Neg = 
+
+primNeg :: TiState -> TiState
+primNeg  (stack@(root:arg:[]), dump, heap, globals, stats) = 
   case heapLookup heap b of
     NNum n ->
-      let heap' = heapUpdate heap arg (NNum (-n))
-      in (stack, dump, heap', globals, stats)
+      let heap' = heapUpdate heap arg  (NNum (-n))
+      in ([arg], dump, heap', globals, stats)
     NInd a3 ->
       let heap' = heapUpdate heap arg (NAp arg a3)
       in (stack, dump, heap', globals, stats)
     _ -> ([b], [arg]:dump, heap, globals, stats)
   where
-    (NAp a b) = heapLookup heap arg
-
+    [b] = getArgs heap stack
 
 
 indStep :: TiState -> Addr -> TiState
@@ -185,10 +202,10 @@ scStep (stack, dump, heap, globals, stats) scName argNames body = (newStack, dum
     newStack@(aN:_) = drop (length argNames) stack
     newHeap = instantiateAndUpdate body aN heap env
     env = Map.union (Map.fromList argBindings) globals
-    argBindings = zip argNames (getargs heap stack)
+    argBindings = zip argNames (getArgs heap stack)
 
-getargs :: TiHeap -> TiStack -> [Addr]
-getargs heap (sc:stack) = map getArg stack
+getArgs :: TiHeap -> TiStack -> [Addr]
+getArgs heap (_sc:stack) = map getArg stack
   where
     getArg addr = arg
       where

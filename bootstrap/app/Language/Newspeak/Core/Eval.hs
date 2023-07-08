@@ -171,6 +171,9 @@ step state = dispatch (heapLookup heap (head stack))
 primStep :: TiState -> Primitive -> TiState
 primStep state Neg = primNeg state
 primStep state Add = primArith state (+)
+primStep state Sub = primArith state (-)
+primStep state Mul = primArith state (*)
+primStep state Div = primArith state div
 
 primNeg :: TiState -> TiState
 primNeg  (stack@(root:arg:[]), dump, heap, globals, stats) = 
@@ -189,8 +192,8 @@ primArith  (stack@(root:arg1:arg2:[]), dump, heap, globals, stats) f =
     (NNum n1, NNum n2) ->
       let heap' = heapUpdate heap arg2  (NNum (f n1 n2))
       in ([arg2], dump, heap', globals, stats)
-    (NNum _, _) -> ([a2], [arg1]:dump, heap, globals, stats)
-    _ -> ([a1], [arg1]:dump, heap, globals, stats)
+    (NNum _, _) -> ([a2], [arg1, arg2]:dump, heap, globals, stats)
+    _ -> ([a1], [arg1, arg2]:dump, heap, globals, stats)
   where
     [a1, a2] = getArgs heap stack
 

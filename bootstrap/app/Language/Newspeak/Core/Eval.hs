@@ -170,7 +170,7 @@ step state = dispatch (heapLookup heap (head stack))
 
 primStep :: TiState -> Primitive -> TiState
 primStep state Neg = primNeg state
-
+primStep state Add = primArith state (+)
 
 primNeg :: TiState -> TiState
 primNeg  (stack@(root:arg:[]), dump, heap, globals, stats) = 
@@ -178,12 +178,21 @@ primNeg  (stack@(root:arg:[]), dump, heap, globals, stats) =
     NNum n ->
       let heap' = heapUpdate heap arg  (NNum (-n))
       in ([arg], dump, heap', globals, stats)
-    NInd a3 ->
-      let heap' = heapUpdate heap arg (NAp arg a3)
-      in (stack, dump, heap', globals, stats)
     _ -> ([b], [arg]:dump, heap, globals, stats)
   where
     [b] = getArgs heap stack
+
+    
+primArith :: TiState -> (Int -> Int -> Int) -> TiState
+primArith  (stack@(root:arg1:arg2:[]), dump, heap, globals, stats) f = 
+  case (heapLookup heap a1, heapLookup heap a2) of
+    (NNum n1, NNum n2) ->
+      let heap' = heapUpdate heap arg2  (NNum (f n1 n2))
+      in ([arg2], dump, heap', globals, stats)
+    (NNum _, _) -> ([a2], [arg1]:dump, heap, globals, stats)
+    _ -> ([a1], [arg1]:dump, heap, globals, stats)
+  where
+    [a1, a2] = getArgs heap stack
 
 
 indStep :: TiState -> Addr -> TiState
@@ -194,7 +203,10 @@ numStep (stack, [], heap, globals, stats) n = error "Number applied as a functio
 numStep (stack, s:dump, heap, globals, stats) n = (s, dump, heap, globals, stats)
 
 apStep :: TiState -> Addr -> Addr -> TiState
-apStep (stack, dump, heap, globals, stats) a1 a2 = (a1 : stack, dump, heap, globals, stats)
+apStep (stack@(a:_), dump, heap, globals, stats) a1 a2 =
+  case heapLookup heap a2 of
+    (NInd a3) -> (stack, dump, heapUpdate heap a (NAp a1 a3), globals, stats)
+    _ -> (a1 : stack, dump, heap, globals, stats)
 
 scStep :: TiState -> Name -> [Name] -> CoreExpr -> TiState
 scStep (stack, dump, heap, globals, stats) scName argNames body = (newStack, dump, newHeap, globals, stats)
@@ -221,7 +233,7 @@ instantiate (EVar v) heap env = (heap, Map.findWithDefault (error ("Undefined na
 instantiate (EConstr tag arity) heap env = undefined -- instantiateConstr tag arity heap env
 instantiate (ELet isrec defs body) heap env = instantiateLet isrec defs body heap env
 instantiate (ECase e alts) heap env = error "Can't instantiate case exprs"
-
+instantiate (EPrim p) heap env = heapAlloc heap (NPrim (show p) p)
 
 
 instantiateLet :: IsRec -> [(Name, CoreExpr)] -> CoreExpr -> TiHeap -> TiGlobals -> (TiHeap, Addr)

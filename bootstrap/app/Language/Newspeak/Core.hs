@@ -63,7 +63,7 @@ pprExpr (EAp e1 e2) = pprExpr e1 <+> pprAExpr e2
 pprExpr (ELet isrec defns expr) = hsep ["let", hang 4 $ pprLet isrec defns, "in", hang 4 $ pprExpr expr]
 pprExpr (ECase expr alts) = hang 4 $ hsep ["case" <+> pprExpr expr <+> "of", pprAlts alts]
 pprExpr (ELam vars expr) = "\\" <+> sep (map pretty vars) <+> "->" <+> pprExpr expr
-
+pprExpr (EPrim p) = viaShow p
 
 pprAExpr :: CoreExpr -> Doc a
 pprAExpr e | isAtomicExpr e = pprExpr e
@@ -96,6 +96,7 @@ tidyExpr (EAp e1 e2) = EAp (tidyExpr e1) (tidyExpr e2)
 tidyExpr (ELet isrec defns expr) = ELet isrec [(v, tidyExpr e) | (v, e) <- defns] (tidyExpr expr)
 tidyExpr (ECase expr alts) = ECase (tidyExpr expr) [(tag, vars, tidyExpr e) | (tag, vars, e) <- alts]
 tidyExpr (ELam vars expr) = ELam vars (tidyExpr expr)
+tidyExpr (EPrim p) = EPrim p
 
 coreProgram :: Program Name -> Program Name
 coreProgram = map tidySc

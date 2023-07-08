@@ -1,0 +1,22 @@
+cradle:
+  cabal:
+    - path: "./app/Main.hs"
+      component: "newspeak-bootstrap:exe:newspeak-bootstrap"
+
+    - path: "./app/Language/Newspeak/Parser.hs"
+      component: "newspeak-bootstrap:exe:newspeak-bootstrap"
+
+    - path: "./app/Language/Newspeak/AST.hs"
+      component: "newspeak-bootstrap:exe:newspeak-bootstrap"
+
+    - path: "./app/Language/Newspeak/PPrint.hs"
+      component: "newspeak-bootstrap:exe:newspeak-bootstrap"
+
+    - path: "./app/Language/Newspeak/Core.hs"
+      component: "newspeak-bootstrap:exe:newspeak-bootstrap"
+
+    - path: "./app/Language/Newspeak/GenCore.hs"
+      component: "newspeak-bootstrap:exe:newspeak-bootstrap"
+
+    - path: "./app/Language/Newspeak/Core/Eval.hs"
+      component: "newspeak-bootstrap:exe:newspeak-bootstrap"

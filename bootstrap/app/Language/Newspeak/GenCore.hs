@@ -6,7 +6,7 @@ import qualified Language.Newspeak.AST as Newspeak
 genCore :: Newspeak.Module -> Core.Program Newspeak.Name
 genCore m = map genDef $ Newspeak.moduleDecls m
 
-genDef :: Newspeak.FunDecl -> Core.ScDefn Newspeak.Name
+genDef :: Newspeak.Decl -> Core.ScDefn Newspeak.Name
 genDef (Newspeak.Fun name args body) = (name, args, genExpr body)
 
 

@@ -7,7 +7,7 @@ import Language.Newspeak.AST
 pprint :: Module -> Doc ann
 pprint (Module _ _ _ decls) = vsep $ map pprintDecl decls
 
-pprintDecl :: FunDecl -> Doc ann
+pprintDecl :: Decl -> Doc ann
 pprintDecl (Fun name args body) =
   pretty name <+> hsep (map pretty args) <+> equals <+> pprintExpr body
 

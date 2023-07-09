@@ -16,7 +16,8 @@ data Node = NAp Addr Addr
           | NNum Int
           | NInd Addr
           | NPrim Name Primitive
-          -- | NData Int [Addr]
+          | NData TypeTag [Addr]
+          | NIf Addr Addr Addr
           -- | NMarked Node
           deriving Show
 
@@ -113,11 +114,11 @@ extraPreludeDefs :: CoreProgram
 extraPreludeDefs = []
 
 buildInitialHeap :: [CoreScDefn] -> (TiHeap, TiGlobals)
-buildInitialHeap scDefs = (heap2, Map.fromList $ scAddrs ++ primAddrs)
+buildInitialHeap scDefs = (heap3, Map.fromList $ scAddrs ++ primAddrs ++ extraAddrs)
   where
     (heap1, scAddrs) = mapAccumL allocateSc initialHeap scDefs
     (heap2, primAddrs) = mapAccumL allocatePrim heap1 primitives
-
+    (heap3, extraAddrs) = mapAccumL allocateData heap2 initialData
 
 primitives :: [(Name, Primitive)]
 primitives = [ ("negate", Neg),
@@ -126,6 +127,13 @@ primitives = [ ("negate", Neg),
                ("*", Mul),
                ("/", Div)              
              ]
+
+
+initialData :: [(Name, Node)]
+initialData = [ ("False", NData 1 []),
+                ("True", NData 2 []),
+                ("Nil", NData 0 [])
+              ]
 
   
 allocateSc :: TiHeap -> CoreScDefn -> (TiHeap, (Name, Addr))
@@ -137,6 +145,12 @@ allocatePrim :: TiHeap -> (Name, Primitive) -> (TiHeap, (Name, Addr))
 allocatePrim heap (name, prim) = (heap', (name, addr))
   where
     (heap', addr) = heapAlloc heap (NPrim name prim)
+
+
+allocateData :: TiHeap -> (Name, Node) -> (TiHeap,  (Name, Addr))
+allocateData heap (name, node) = (heap', (name, addr))
+  where
+    (heap', addr) = heapAlloc heap node
     
 eval :: TiState -> [TiState]
 eval state = state : restStates
@@ -166,6 +180,7 @@ step state = dispatch (heapLookup heap (head stack))
     dispatch (NSupercomb sc args body) = scStep state sc args body
     dispatch (NInd a1) = indStep state a1
     dispatch (NPrim _ p) = primStep state p
+    dispatch (NIf a1 a2 a3) = ifStep state a1 a2 a3
     
 
 primStep :: TiState -> Primitive -> TiState
@@ -174,6 +189,8 @@ primStep state Add = primArith state (+)
 primStep state Sub = primArith state (-)
 primStep state Mul = primArith state (*)
 primStep state Div = primArith state div
+primStep state (PrimConstr tag arity) = primConstr state tag arity
+
 
 primNeg :: TiState -> TiState
 primNeg  (stack@(root:arg:[]), dump, heap, globals, stats) = 
@@ -196,6 +213,15 @@ primArith  (stack@(root:arg1:arg2:[]), dump, heap, globals, stats) f =
     _ -> ([a1], [arg1, arg2]:dump, heap, globals, stats)
   where
     [a1, a2] = getArgs heap stack
+
+primConstr :: TiState -> TypeTag -> Arity -> TiState
+primConstr (stack, dump, heap, globals, stats) tag arity =
+  ([an], dump, heap', globals, stats)
+  where
+    heap' = heapUpdate heap an (NData tag (take arity args))
+    args = getArgs heap stack
+    an = last args
+
 
 
 indStep :: TiState -> Addr -> TiState
@@ -222,6 +248,13 @@ scStep (stack, dump, heap, globals, stats) scName argNames body = (newStack, dum
     env = Map.union (Map.fromList argBindings) globals
     argBindings = zip argNames (getArgs heap stack)
 
+ifStep :: TiState -> Addr -> Addr -> Addr -> TiState
+ifStep (stack, dump, heap, globals, stats) a1 a2 a3 =
+  case heapLookup heap a1 of
+    NData 2 [] -> (a2:stack, dump, heap, globals, stats)
+    NData 1 [] -> (a3:stack, dump, heap, globals, stats)
+    _ -> error "if applied to non-boolean"
+    
 getArgs :: TiHeap -> TiStack -> [Addr]
 getArgs heap (_sc:stack) = map getArg stack
   where
@@ -270,4 +303,5 @@ instantiateAndUpdate (ECase e alts) updAddr heap env = error "Can't instantiate 
 
 instantiateAndUpdate (EPrim p) updAddr heap env = heapUpdate heap updAddr (NPrim (show p) p)
 
+instantiateAndUpdate (EConstr tag arity) updAddr heap env = heapUpdate heap updAddr (NPrim "Pack" (PrimConstr tag arity))
 

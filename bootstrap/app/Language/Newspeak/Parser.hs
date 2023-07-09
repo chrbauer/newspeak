@@ -50,7 +50,7 @@ stringLiteral :: Parser String
 stringLiteral = char '\"' *> manyTill L.charLiteral (char '\"')
 
 block :: Parsec Void Text AST
-block =  sc *> ((FunDecl <$> try pFunDecl) <|> (Expr <$> pExpr))  
+block =  sc *> ((Decl <$> try pFunDecl) <|> (Expr <$> pExpr))  
 
 identifier :: Parser String
 identifier = lexeme  ((:) <$> letterChar <*> many alphaNumChar <?> "identifier")
@@ -151,7 +151,7 @@ pModule name = Module name [] [] <$>  (some (pTopLevel <* scn) <* eof)
 
 
 
-pFunDecl :: Parser FunDecl
+pFunDecl :: Parser Decl
 pFunDecl = do
   name <- identifier
   args <- sepBy identifier sc
@@ -159,7 +159,23 @@ pFunDecl = do
   body <- pExpr
   return $ Fun name args body
 
-pTopLevel :: Parser FunDecl
+
+pDataDecl :: Parser Decl
+pDataDecl = do
+  pKeyword "type"
+  name <- identifier
+  symbol "="
+  constructors <- sepBy1 pConstructor (symbol "|")
+  return $ DataType name constructors
+
+pConstructor :: Parser Constructor
+pConstructor = do
+  name <- identifier
+  args <- many identifier
+  return $ Constructor name 42 args
+  
+
+pTopLevel :: Parser Decl
 pTopLevel = L.nonIndented scn pFunDecl
 
 pItem :: Parser String

@@ -16,6 +16,7 @@ data Expr a = EVar Name | ENum Int | EConstr Int Int | EAp (Expr a) (Expr a)
   | ECase (Expr a) [Alter a]
   | ELam [a] (Expr a)
   | EPrim Primitive
+  | EIf (Expr a) (Expr a) (Expr a)
   deriving (Show, Eq)
 
 type Program a = [ScDefn a]
@@ -99,6 +100,7 @@ tidyExpr (ELet isrec defns expr) = ELet isrec [(v, tidyExpr e) | (v, e) <- defns
 tidyExpr (ECase expr alts) = ECase (tidyExpr expr) [(tag, vars, tidyExpr e) | (tag, vars, e) <- alts]
 tidyExpr (ELam vars expr) = ELam vars (tidyExpr expr)
 tidyExpr (EPrim p) = EPrim p
+tidyExpr (EIf e1 e2 e3) = EIf (tidyExpr e1) (tidyExpr e2) (tidyExpr e3)
 
 coreProgram :: Program Name -> Program Name
 coreProgram = map tidySc

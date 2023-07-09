@@ -23,7 +23,9 @@ type CoreProgram = Program Name
 type ScDefn a = (Name, [a], Expr a)
 type CoreScDefn = ScDefn Name
 type CoreExpr = Expr Name
-data Primitive = Neg | Add | Sub | Mul | Div deriving (Show, Eq)
+type TypeTag = Int
+type Arity = Int
+data Primitive = Neg | Add | Sub | Mul | Div | PrimConstr TypeTag Arity deriving (Show, Eq)
 
 recursive = True
 nonRecursive = False

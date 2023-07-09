@@ -206,16 +206,19 @@ numStep (stack, [], heap, globals, stats) n = error "Number applied as a functio
 numStep (stack, s:dump, heap, globals, stats) n = (s, dump, heap, globals, stats)
 
 apStep :: TiState -> Addr -> Addr -> TiState
-apStep (stack@(a:_), dump, heap, globals, stats) a1 a2 =
-  case heapLookup heap a2 of
-    (NInd a3) -> (stack, dump, heapUpdate heap a (NAp a1 a3), globals, stats)
-    _ -> (a1 : stack, dump, heap, globals, stats)
+apStep (stack@(a:s), dump, heap, globals, stats) a1 a2 =
+  case heapLookup heap a1 of
+    (NInd a1') -> (a1':stack, dump, heap, globals, stats)
+    _ -> case heapLookup heap a2 of
+           (NInd a3) -> (stack, dump, heapUpdate heap a (NAp a1 a3), globals, stats)
+           _ -> (a1 : stack, dump, heap, globals, stats)
 
 scStep :: TiState -> Name -> [Name] -> CoreExpr -> TiState
 scStep (stack, dump, heap, globals, stats) scName argNames body = (newStack, dump, newHeap, globals, stats)
   where
     newStack@(aN:_) = drop (length argNames) stack
-    newHeap = instantiateAndUpdate body aN heap env
+    (heap', ar) = instantiate body heap env
+    newHeap = heapUpdate heap' aN (NInd ar)
     env = Map.union (Map.fromList argBindings) globals
     argBindings = zip argNames (getArgs heap stack)
 
@@ -237,7 +240,7 @@ instantiate (EConstr tag arity) heap env = undefined -- instantiateConstr tag ar
 instantiate (ELet isrec defs body) heap env = instantiateLet isrec defs body heap env
 instantiate (ECase e alts) heap env = error "Can't instantiate case exprs"
 instantiate (EPrim p) heap env = heapAlloc heap (NPrim (show p) p)
-
+instantiate (EConstr tag arity) heap env = heapAlloc heap (NPrim "Pack" (PrimConstr tag arity))
 
 instantiateLet :: IsRec -> [(Name, CoreExpr)] -> CoreExpr -> TiHeap -> TiGlobals -> (TiHeap, Addr)
 instantiateLet isrec defs body heap env = instantiate body heap' env'
@@ -257,12 +260,14 @@ instantiateAndUpdate (EAp e1 e2) updAddr heap env = heap3
 instantiateAndUpdate var@(EVar v) updAddr heap env = newHeap
   where 
      (heap', resultAddr) = instantiate var heap env
-     newHeap = heapUpdate heap updAddr (NInd resultAddr) 
+     newHeap = heapUpdate heap' updAddr (NInd resultAddr)
 
 instantiateAndUpdate (ENum n) updAddr heap env = heapUpdate heap updAddr (NNum n)
 instantiateAndUpdate (EConstr tag arity) updAddr heap env = undefined -- instantiateConstr tag arity heap env
 instantiateAndUpdate (ELet isrec defs body) updAddr heap env = heapUpdate heap' updAddr (NInd a)
   where (heap', a) = instantiateLet isrec defs body heap env
 instantiateAndUpdate (ECase e alts) updAddr heap env = error "Can't instantiate case"
+
+instantiateAndUpdate (EPrim p) updAddr heap env = heapUpdate heap updAddr (NPrim (show p) p)
 
 

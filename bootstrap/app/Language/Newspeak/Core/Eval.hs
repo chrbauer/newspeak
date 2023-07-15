@@ -202,6 +202,13 @@ primStep state Mul = primArith state (*)
 primStep state Div = primArith state div
 primStep state (PrimConstr tag arity) = primConstr state tag arity
 primStep state If = primIfStep state
+primStep state Greater = primComp state (>)
+primStep state GreaterEq = primComp state (>=)
+primStep state Less = primComp state (<)
+primStep state LessEq = primComp state (<=)
+primStep state Eq = primComp state (==)
+primStep state NotEq = primComp state (/=)
+
 
 primNeg :: TiState -> TiState
 primNeg  (stack@(root:arg:[]), dump, heap, globals, stats) = 
@@ -219,6 +226,19 @@ primArith  (stack@(root:arg1:arg2:[]), dump, heap, globals, stats) f =
   case (heapLookup heap a1, heapLookup heap a2) of
     (NNum n1, NNum n2) ->
       let heap' = heapUpdate heap arg2  (NNum (f n1 n2))
+      in ([arg2], dump, heap', globals, stats)
+    (NNum _, _) -> ([a2], [arg1, arg2]:dump, heap, globals, stats)
+    _ -> ([a1], [arg1, arg2]:dump, heap, globals, stats)
+  where
+    [a1, a2] = getArgs heap stack
+
+
+primComp :: TiState -> (Int -> Int -> Bool) -> TiState
+primComp  (stack@(root:arg1:arg2:[]), dump, heap, globals, stats) f = 
+  case (heapLookup heap a1, heapLookup heap a2) of
+    (NNum n1, NNum n2) ->
+      let heap' = heapUpdate heap arg2  (NData tag [])
+          tag = if f n1 n2 then 2 else 1
       in ([arg2], dump, heap', globals, stats)
     (NNum _, _) -> ([a2], [arg1, arg2]:dump, heap, globals, stats)
     _ -> ([a1], [arg1, arg2]:dump, heap, globals, stats)

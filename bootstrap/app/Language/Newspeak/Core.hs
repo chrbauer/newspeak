@@ -16,7 +16,7 @@ data Expr a = EVar Name | ENum Int | EConstr Int Int | EAp (Expr a) (Expr a)
   | ECase (Expr a) [Alter a]
   | ELam [a] (Expr a)
   | EPrim Primitive
-  | EIf (Expr a) (Expr a) (Expr a)
+  -- | EIf (Expr a) (Expr a) (Expr a)
   deriving (Show, Eq)
 
 type Program a = [ScDefn a]
@@ -26,7 +26,8 @@ type CoreScDefn = ScDefn Name
 type CoreExpr = Expr Name
 type TypeTag = Int
 type Arity = Int
-data Primitive = Neg | Add | Sub | Mul | Div | PrimConstr TypeTag Arity deriving (Show, Eq)
+data Primitive = Neg | Add | Sub | Mul | Div | PrimConstr TypeTag Arity
+               | If | Greater | GreaterEq | Less | LessEq | Eq | NotEq deriving (Show, Eq)
 
 recursive = True
 nonRecursive = False
@@ -68,7 +69,6 @@ pprExpr (ECase expr alts) = hang 4 $ hsep ["case" <+> pprExpr expr <+> "of", ppr
 pprExpr (ELam vars expr) = "\\" <+> sep (map pretty vars) <+> "->" <+> pprExpr expr
 pprExpr (EPrim p) = viaShow p
 pprExpr (EConstr tag arity) = "Pack{" <> viaShow tag <> "," <> viaShow arity <> "}"
-pprExpr (EIf e1 e2 e3) = hsep ["if", pprExpr e1, "then", pprExpr e2, "else", pprExpr e3]
 
 pprAExpr :: CoreExpr -> Doc a
 pprAExpr e | isAtomicExpr e = pprExpr e
@@ -102,7 +102,7 @@ tidyExpr (ELet isrec defns expr) = ELet isrec [(v, tidyExpr e) | (v, e) <- defns
 tidyExpr (ECase expr alts) = ECase (tidyExpr expr) [(tag, vars, tidyExpr e) | (tag, vars, e) <- alts]
 tidyExpr (ELam vars expr) = ELam vars (tidyExpr expr)
 tidyExpr (EPrim p) = EPrim p
-tidyExpr (EIf e1 e2 e3) = EIf (tidyExpr e1) (tidyExpr e2) (tidyExpr e3)
+
 
 coreProgram :: Program Name -> Program Name
 coreProgram = map tidySc

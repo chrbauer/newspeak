@@ -127,7 +127,15 @@ primitives = [ ("negate", Neg),
                ("+", Add),
                ("-", Sub),
                ("*", Mul),
-               ("/", Div)              
+               ("/", Div),
+               (">", Greater),
+               (">=", GreaterEq),
+               ("<", Less),
+               ("<=", LessEq),
+               ("==", Eq),
+               ("!=", NotEq),
+               ("if", If)
+               
              ]
 
 
@@ -183,7 +191,6 @@ step state = dispatch (heapLookup heap (head stack))
     dispatch (NSupercomb sc args body) = scStep state sc args body
     dispatch (NInd a1) = indStep state a1
     dispatch (NPrim _ p) = primStep state p
-    dispatch (NIf a1 a2 a3) = ifStep state a1 a2 a3
     dispatch (NData tag args) = dataStep state 
     
 
@@ -194,7 +201,7 @@ primStep state Sub = primArith state (-)
 primStep state Mul = primArith state (*)
 primStep state Div = primArith state div
 primStep state (PrimConstr tag arity) = primConstr state tag arity
-
+primStep state If = primIfStep state
 
 primNeg :: TiState -> TiState
 primNeg  (stack@(root:arg:[]), dump, heap, globals, stats) = 
@@ -226,7 +233,18 @@ primConstr (stack, dump, heap, globals, stats) tag arity =
     args = getArgs heap stack
     an = last stack
 
-
+primIfStep :: TiState ->  TiState
+primIfStep (stack@(a:condE:thenE:elseE:rest), dump, heap, globals, stats) =
+   case heapLookup heap a1 of
+     NData 2 [] ->
+       let heap' = heapUpdate heap elseE (NInd a2) in
+         (elseE:rest, dump, heap', globals, stats)
+     NData 1 [] ->
+         let heap' = heapUpdate heap elseE (NInd a3) in
+           (elseE:rest, dump, heap', globals, stats)
+     _ -> ([a1], (elseE:rest):dump, heap, globals, stats)
+  where
+    [a1, a2, a3] = take 3 $ getArgs heap stack
 
 indStep :: TiState -> Addr -> TiState
 indStep (a:stack, dump, heap, globals, stats) a1 = (a1 : stack, dump, heap, globals, stats)
@@ -257,16 +275,6 @@ scStep (stack, dump, heap, globals, stats) scName argNames body = (newStack, dum
     env = Map.union (Map.fromList argBindings) globals
     argBindings = zip argNames (getArgs heap stack)
 
-ifStep :: TiState -> Addr -> Addr -> Addr -> TiState
-ifStep (stack@(a:rest), dump, heap, globals, stats) a1 a2 a3 =
-  case heapLookup heap a1 of
-    NData 2 [] ->
-      let heap' = heapUpdate heap a (NInd a2) in
-        (a2:rest, dump, heap', globals, stats)
-    NData 1 [] ->
-        let heap' = heapUpdate heap a (NInd a3) in
-          (a3:rest, dump, heap', globals, stats)
-    _ -> ([a1], stack:dump, heap, globals, stats)
     
 getArgs :: TiHeap -> TiStack -> [Addr]
 getArgs heap (_sc:stack) = map getArg stack
@@ -287,11 +295,6 @@ instantiate (ELet isrec defs body) heap env = instantiateLet isrec defs body hea
 instantiate (ECase e alts) heap env = error "Can't instantiate case exprs"
 instantiate (EPrim p) heap env = heapAlloc heap (NPrim (show p) p)
 instantiate (EConstr tag arity) heap env = heapAlloc heap (NPrim "Pack" (PrimConstr tag arity))
-instantiate (EIf e1 e2 e3) heap env = heapAlloc heap3 (NIf a1 a2 a3)
-  where
-    (heap1, a1) = instantiate e1 heap env
-    (heap2, a2) = instantiate e2 heap1 env
-    (heap3, a3) = instantiate e3 heap2 env
 
 instantiateLet :: IsRec -> [(Name, CoreExpr)] -> CoreExpr -> TiHeap -> TiGlobals -> (TiHeap, Addr)
 instantiateLet isrec defs body heap env = instantiate body heap' env'

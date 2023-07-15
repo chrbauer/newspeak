@@ -67,6 +67,8 @@ pprExpr (ELet isrec defns expr) = hsep ["let", hang 4 $ pprLet isrec defns, "in"
 pprExpr (ECase expr alts) = hang 4 $ hsep ["case" <+> pprExpr expr <+> "of", pprAlts alts]
 pprExpr (ELam vars expr) = "\\" <+> sep (map pretty vars) <+> "->" <+> pprExpr expr
 pprExpr (EPrim p) = viaShow p
+pprExpr (EConstr tag arity) = "Pack{" <> viaShow tag <> "," <> viaShow arity <> "}"
+pprExpr (EIf e1 e2 e3) = hsep ["if", pprExpr e1, "then", pprExpr e2, "else", pprExpr e3]
 
 pprAExpr :: CoreExpr -> Doc a
 pprAExpr e | isAtomicExpr e = pprExpr e

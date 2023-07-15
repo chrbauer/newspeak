@@ -67,6 +67,9 @@ pVariable = ExprVar <$> lexeme
 pInteger :: Parser Expr
 pInteger = ExprLit . LitInt <$> lexeme L.decimal
 
+pLiteral :: Parser Expr
+pLiteral = pInteger <|> pBoolLit
+
 parens :: Parser a -> Parser a
 parens = between (symbol "(") (symbol ")")
 
@@ -81,21 +84,21 @@ ifThenElse = do
   return $ ExprIf cond thenExpr elseExpr
 
 
-boolExpr :: Parser BoolExpr
-boolExpr =  try boolCompare <|> boolLit <|> boolVar
+-- boolExpr :: Parser BoolExpr
+-- boolExpr =  try boolCompare <|> boolLit <|> boolVar
 
-boolLit :: Parser BoolExpr
-boolLit = BoolLit <$> (pKeyword "True" $> True <|> pKeyword "False" $> False)
+pBoolLit :: Parser Expr
+pBoolLit = ExprLit . LitBool <$> (pKeyword "True" $> True <|> pKeyword "False" $> False)
 
-boolVar :: Parser BoolExpr
-boolVar = BoolVar <$> identifier
+-- boolVar :: Parser BoolExpr
+-- boolVar = BoolVar <$> identifier
 
-boolCompare :: Parser BoolExpr
-boolCompare = do
-  left <- pExpr
-  op <- pKeyword "==" $> Eq <|> pKeyword "<=" $> Leq <|> pKeyword ">=" $> Geq
-  right <- pExpr
-  return $ BoolCompare left op right
+-- boolCompare :: Parser BoolExpr
+-- boolCompare = do
+--   left <- pExpr
+--   op <- pKeyword "==" $> Eq <|> pKeyword "<=" $> Leq <|> pKeyword ">=" $> Geq
+--   right <- pExpr
+--   return $ BoolCompare left op right
 
 pTerm :: Parser Expr
 pTerm = choice

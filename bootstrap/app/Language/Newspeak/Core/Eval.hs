@@ -258,11 +258,15 @@ scStep (stack, dump, heap, globals, stats) scName argNames body = (newStack, dum
     argBindings = zip argNames (getArgs heap stack)
 
 ifStep :: TiState -> Addr -> Addr -> Addr -> TiState
-ifStep (stack@(_:c:t:e:rest), dump, heap, globals, stats) a1 a2 a3 =
+ifStep (stack@(a:rest), dump, heap, globals, stats) a1 a2 a3 =
   case heapLookup heap a1 of
-    NData 2 [] -> (t:rest, dump, heap, globals, stats)
-    NData 1 [] -> (e:rest, dump, heap, globals, stats)
-    _ -> ([c], stack:dump, heap, globals, stats)
+    NData 2 [] ->
+      let heap' = heapUpdate heap a (NInd a2) in
+        (a2:rest, dump, heap', globals, stats)
+    NData 1 [] ->
+        let heap' = heapUpdate heap a (NInd a3) in
+          (a3:rest, dump, heap', globals, stats)
+    _ -> ([a1], stack:dump, heap, globals, stats)
     
 getArgs :: TiHeap -> TiStack -> [Addr]
 getArgs heap (_sc:stack) = map getArg stack
@@ -283,6 +287,11 @@ instantiate (ELet isrec defs body) heap env = instantiateLet isrec defs body hea
 instantiate (ECase e alts) heap env = error "Can't instantiate case exprs"
 instantiate (EPrim p) heap env = heapAlloc heap (NPrim (show p) p)
 instantiate (EConstr tag arity) heap env = heapAlloc heap (NPrim "Pack" (PrimConstr tag arity))
+instantiate (EIf e1 e2 e3) heap env = heapAlloc heap3 (NIf a1 a2 a3)
+  where
+    (heap1, a1) = instantiate e1 heap env
+    (heap2, a2) = instantiate e2 heap1 env
+    (heap3, a3) = instantiate e3 heap2 env
 
 instantiateLet :: IsRec -> [(Name, CoreExpr)] -> CoreExpr -> TiHeap -> TiGlobals -> (TiHeap, Addr)
 instantiateLet isrec defs body heap env = instantiate body heap' env'

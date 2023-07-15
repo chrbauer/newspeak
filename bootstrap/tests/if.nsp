@@ -1,0 +1,11 @@
+data Bool = True | False
+
+if cond t e =
+   match cond with
+      True  -> t
+      False -> e
+
+and x y = if x y False
+      
+ 
+     

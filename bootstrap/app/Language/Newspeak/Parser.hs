@@ -65,7 +65,7 @@ pVariable = ExprVar <$> lexeme
   ((:) <$> letterChar <*> many alphaNumChar <?> "variable")
   
 pInteger :: Parser Expr
-pInteger = ExprLit <$> lexeme L.decimal
+pInteger = ExprLit . LitInt <$> lexeme L.decimal
 
 parens :: Parser a -> Parser a
 parens = between (symbol "(") (symbol ")")
@@ -73,7 +73,7 @@ parens = between (symbol "(") (symbol ")")
 ifThenElse :: Parser Expr
 ifThenElse = do
   pKeyword "if"
-  cond <- boolExpr
+  cond <- pExpr
   pKeyword "then"
   thenExpr <- pExpr
   pKeyword "else"

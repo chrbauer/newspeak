@@ -5,12 +5,14 @@ import Data.Text (Text)
 
 data AST = Expr Expr | Decl Decl deriving (Show, Eq)
 data Expr = ExprBinOp BinOp Expr Expr
-              | ExprLit Integer
+              | ExprLit Literal
               | ExprVar String
-              | ExprIf BoolExpr Expr Expr
+              | ExprIf Expr Expr Expr
               | ExprApply String [Expr]
               | ExprLet [Decl] Expr
               deriving (Show, Eq)
+
+data Literal = LitInt Integer | LitBool Bool deriving (Show, Eq)
 
 data BoolExpr = BoolCompare Expr CompOp Expr
                | BoolLit Bool

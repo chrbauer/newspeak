@@ -11,7 +11,7 @@ genDef (Newspeak.Fun name args body) = (name, args, genExpr body)
 
 
 genExpr :: Newspeak.Expr -> Core.Expr Core.Name
-genExpr (Newspeak.ExprLit n) = Core.ENum (fromIntegral n)
+genExpr (Newspeak.ExprLit lit) = packLit lit
 genExpr (Newspeak.ExprVar v) = Core.EVar v
 genExpr (Newspeak.ExprApply f args) = foldl (\ r a -> Core.EAp r  (genExpr a)) (Core.EVar f) args
 genExpr (Newspeak.ExprLet binds args) = Core.ELet True (map genBindings binds) (genExpr args)
@@ -25,5 +25,11 @@ primOp Newspeak.Add = Core.Add
 primOp Newspeak.Sub = Core.Sub
 primOp Newspeak.Mul = Core.Mul
 primOp Newspeak.Div = Core.Div
+
+packLit :: Newspeak.Literal -> Core.Expr a
+packLit (Newspeak.LitInt i) = Core.ENum (fromIntegral i)
+packLit (Newspeak.LitBool b) = Core.EPrim (Core.PrimConstr (if b then 2 else 1) 0)
+
+
 
 

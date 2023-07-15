@@ -85,6 +85,8 @@ showNode _ (NNum n) = pretty n
 showNode heap (NInd addr) = pretty "Indirection:" <+> pretty addr
 
 showNode _ (NPrim name p) = pretty "PrimOp:" <+> pretty name
+showNode heap (NData tag addrs) = pretty "Data:" <+> pretty tag <+> hsep (map pretty addrs)
+showNode heap (NIf addr1 addr2 addr3) = pretty "If:" <+> pretty addr1 <+> pretty addr2 <+> pretty addr3
 
 showHeap :: TiHeap -> Doc ann
 showHeap h@(Heap _ heap) = vsep (map (showHeapItem h) (Map.toList heap))
@@ -169,18 +171,20 @@ tiFinal state = False
 
 isDataNode :: Node -> Bool
 isDataNode (NNum n) = True
+isDataNode (NData _ _) = True
 isDataNode node = False
 
 step :: TiState -> TiState
 step state = dispatch (heapLookup heap (head stack))
   where
     (stack, dump, heap, globals, stats) = state
-    dispatch (NNum n) = numStep state n
+    dispatch (NNum n) = numStep state 
     dispatch (NAp a1 a2) = apStep state a1 a2
     dispatch (NSupercomb sc args body) = scStep state sc args body
     dispatch (NInd a1) = indStep state a1
     dispatch (NPrim _ p) = primStep state p
     dispatch (NIf a1 a2 a3) = ifStep state a1 a2 a3
+    dispatch (NData tag args) = dataStep state 
     
 
 primStep :: TiState -> Primitive -> TiState
@@ -220,16 +224,21 @@ primConstr (stack, dump, heap, globals, stats) tag arity =
   where
     heap' = heapUpdate heap an (NData tag (take arity args))
     args = getArgs heap stack
-    an = last args
+    an = last stack
 
 
 
 indStep :: TiState -> Addr -> TiState
 indStep (a:stack, dump, heap, globals, stats) a1 = (a1 : stack, dump, heap, globals, stats)
 
-numStep :: TiState -> Int -> TiState
-numStep (stack, [], heap, globals, stats) n = error "Number applied as a function!"
-numStep (stack, s:dump, heap, globals, stats) n = (s, dump, heap, globals, stats)
+numStep :: TiState -> TiState
+numStep (stack, [], heap, globals, stats) = error "Number applied as a function!"
+numStep (stack, s:dump, heap, globals, stats) = (s, dump, heap, globals, stats)
+
+dataStep :: TiState  -> TiState
+dataStep (stack, [], heap, globals, stats) = error "Data applied as a function!"
+dataStep (stack, s:dump, heap, globals, stats) = (s, dump, heap, globals, stats)
+
 
 apStep :: TiState -> Addr -> Addr -> TiState
 apStep (stack@(a:s), dump, heap, globals, stats) a1 a2 =
@@ -249,11 +258,11 @@ scStep (stack, dump, heap, globals, stats) scName argNames body = (newStack, dum
     argBindings = zip argNames (getArgs heap stack)
 
 ifStep :: TiState -> Addr -> Addr -> Addr -> TiState
-ifStep (stack, dump, heap, globals, stats) a1 a2 a3 =
+ifStep (stack@(_:c:t:e:rest), dump, heap, globals, stats) a1 a2 a3 =
   case heapLookup heap a1 of
-    NData 2 [] -> (a2:stack, dump, heap, globals, stats)
-    NData 1 [] -> (a3:stack, dump, heap, globals, stats)
-    _ -> error "if applied to non-boolean"
+    NData 2 [] -> (t:rest, dump, heap, globals, stats)
+    NData 1 [] -> (e:rest, dump, heap, globals, stats)
+    _ -> ([c], stack:dump, heap, globals, stats)
     
 getArgs :: TiHeap -> TiStack -> [Addr]
 getArgs heap (_sc:stack) = map getArg stack

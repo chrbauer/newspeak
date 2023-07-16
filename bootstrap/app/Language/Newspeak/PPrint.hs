@@ -25,6 +25,13 @@ pprintPrimOp Add = pretty "+"
 pprintPrimOp Sub = pretty "-"
 pprintPrimOp Mul = pretty "*"
 pprintPrimOp Div = pretty "/"
+pprintPrimOp Eq = pretty "=="
+pprintPrimOp Neq = pretty "/="
+pprintPrimOp Lt = pretty "<"
+pprintPrimOp Leq = pretty "<="
+pprintPrimOp Gt = pretty ">"
+pprintPrimOp Geq = pretty ">="
+
 
 -- pprintLit :: Lit -> Doc ann
 pprintLit (LitInt i) = pretty i

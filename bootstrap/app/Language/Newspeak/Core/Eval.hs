@@ -234,8 +234,8 @@ primDyadic  f (stack@(root:arg1:arg2:[]), dump, heap, globals, stats) =
     (True, True) ->
       let heap' = heapUpdate heap arg2  (f n1 n2)
       in ([arg2], dump, heap', globals, stats)
-    (True, _) -> ([a2], [arg1, arg2]:dump, heap, globals, stats)
-    _ -> ([a1], [arg1, arg2]:dump, heap, globals, stats)
+    (True, _) -> ([a2], [arg2]:dump, heap, globals, stats)
+    _ -> ([a1], [arg2]:dump, heap, globals, stats)
   where
     [a1, a2] = getArgs heap stack
     n1 = heapLookup heap a1
@@ -332,11 +332,10 @@ instantiateLet isrec defs body heap env = instantiate body heap' env'
         (heap', addr) = instantiate expr heap env'
 
 instantiateAndUpdate :: CoreExpr -> Addr -> TiHeap -> TiGlobals -> TiHeap
-instantiateAndUpdate (EAp e1 e2) updAddr heap env = heap3
+instantiateAndUpdate (EAp e1 e2) updAddr heap env = heapUpdate heap2 updAddr (NAp a1 a2)
   where
     (heap1, a1) = instantiate e1 heap env
     (heap2, a2) = instantiate e2 heap1 env
-    heap3 = heapUpdate heap2 updAddr (NAp a1 a2)
 instantiateAndUpdate var@(EVar v) updAddr heap env = newHeap
   where 
      (heap', resultAddr) = instantiate var heap env

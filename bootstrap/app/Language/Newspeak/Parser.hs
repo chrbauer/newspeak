@@ -143,8 +143,10 @@ binary  name op = InfixL  (ExprBinOp op <$ symbol name)
   
 operatorTable :: [[Operator Parser Expr]]
 operatorTable = [
+  
   [binary "*" Mul, binary "/" Div],
-  [binary "+" Add, binary "-" Sub]    
+  [binary "+" Add, binary "-" Sub],
+  [binary "==" Eq, binary "<=" Leq, binary ">=" Geq ,binary "<" Lt, binary ">" Gt]
   ]
 
 

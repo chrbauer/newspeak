@@ -26,6 +26,12 @@ primOp Newspeak.Add = Core.Add
 primOp Newspeak.Sub = Core.Sub
 primOp Newspeak.Mul = Core.Mul
 primOp Newspeak.Div = Core.Div
+primOp Newspeak.Eq = Core.Eq
+primOp Newspeak.Neq = Core.NotEq
+primOp Newspeak.Lt = Core.Less
+primOp Newspeak.Leq = Core.LessEq
+primOp Newspeak.Gt = Core.Greater
+primOp Newspeak.Geq = Core.GreaterEq
 
 packLit :: Newspeak.Literal -> Core.Expr a
 packLit (Newspeak.LitInt i) = Core.ENum (fromIntegral i)

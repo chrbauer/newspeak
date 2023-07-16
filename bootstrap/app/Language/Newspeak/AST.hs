@@ -14,19 +14,12 @@ data Expr = ExprBinOp BinOp Expr Expr
 
 data Literal = LitInt Integer | LitBool Bool deriving (Show, Eq)
 
-data BoolExpr = BoolCompare Expr CompOp Expr
-               | BoolLit Bool
-               | BoolVar String
-              deriving (Show, Eq)
-
-data CompOp = Eq | Neq | Lt | Gt | Leq | Geq
-            deriving (Show, Eq)
 
 data Decl = Fun String [String] Expr
             | DataType Name [Constructor]
          deriving (Show, Eq)
 
-data BinOp = Add | Sub | Mul | Div
+data BinOp = Add | Sub | Mul | Div | Eq | Neq | Lt | Gt | Leq | Geq
   deriving (Show, Eq)
 
 type Program = [AST]

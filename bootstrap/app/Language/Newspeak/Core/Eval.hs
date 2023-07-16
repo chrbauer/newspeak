@@ -190,24 +190,24 @@ step state = dispatch (heapLookup heap (head stack))
     dispatch (NAp a1 a2) = apStep state a1 a2
     dispatch (NSupercomb sc args body) = scStep state sc args body
     dispatch (NInd a1) = indStep state a1
-    dispatch (NPrim _ p) = primStep state p
+    dispatch (NPrim _ p) = primStep p state
     dispatch (NData tag args) = dataStep state 
     
 
-primStep :: TiState -> Primitive -> TiState
-primStep state Neg = primNeg state
-primStep state Add = primArith state (+)
-primStep state Sub = primArith state (-)
-primStep state Mul = primArith state (*)
-primStep state Div = primArith state div
-primStep state (PrimConstr tag arity) = primConstr state tag arity
-primStep state If = primIfStep state
-primStep state Greater = primComp state (>)
-primStep state GreaterEq = primComp state (>=)
-primStep state Less = primComp state (<)
-primStep state LessEq = primComp state (<=)
-primStep state Eq = primComp state (==)
-primStep state NotEq = primComp state (/=)
+primStep :: Primitive -> TiState -> TiState
+primStep Neg = primNeg 
+primStep Add = primArith (+)
+primStep Sub = primArith (-)
+primStep Mul = primArith (*)
+primStep Div = primArith div
+primStep (PrimConstr tag arity) = primConstr tag arity
+primStep If = primIfStep 
+primStep Greater = primComp (>)
+primStep GreaterEq = primComp (>=)
+primStep Less = primComp  (<)
+primStep LessEq = primComp  (<=)
+primStep Eq = primComp (==)
+primStep NotEq = primComp (/=)
 
 
 primNeg :: TiState -> TiState
@@ -221,32 +221,38 @@ primNeg  (stack@(root:arg:[]), dump, heap, globals, stats) =
     [b] = getArgs heap stack
 
     
-primArith :: TiState -> (Int -> Int -> Int) -> TiState
-primArith  (stack@(root:arg1:arg2:[]), dump, heap, globals, stats) f = 
-  case (heapLookup heap a1, heapLookup heap a2) of
-    (NNum n1, NNum n2) ->
-      let heap' = heapUpdate heap arg2  (NNum (f n1 n2))
+primArith :: (Int -> Int -> Int) -> TiState -> TiState
+primArith f = primDyadic (numOp f)
+
+
+primComp :: (Int -> Int -> Bool) -> TiState -> TiState
+primComp f = primDyadic (cmpOp f)
+
+primDyadic :: (Node -> Node -> Node) -> TiState ->  TiState
+primDyadic  f (stack@(root:arg1:arg2:[]), dump, heap, globals, stats) = 
+  case (isDataNode n1 , isDataNode n2) of
+    (True, True) ->
+      let heap' = heapUpdate heap arg2  (f n1 n2)
       in ([arg2], dump, heap', globals, stats)
-    (NNum _, _) -> ([a2], [arg1, arg2]:dump, heap, globals, stats)
+    (True, _) -> ([a2], [arg1, arg2]:dump, heap, globals, stats)
     _ -> ([a1], [arg1, arg2]:dump, heap, globals, stats)
   where
     [a1, a2] = getArgs heap stack
+    n1 = heapLookup heap a1
+    n2 = heapLookup heap a2
 
+numOp f a b = case (a, b) of
+  (NNum n1, NNum n2) -> NNum (f n1 n2)
+  _ -> error "numOp: not numbers"    
 
-primComp :: TiState -> (Int -> Int -> Bool) -> TiState
-primComp  (stack@(root:arg1:arg2:[]), dump, heap, globals, stats) f = 
-  case (heapLookup heap a1, heapLookup heap a2) of
-    (NNum n1, NNum n2) ->
-      let heap' = heapUpdate heap arg2  (NData tag [])
-          tag = if f n1 n2 then 2 else 1
-      in ([arg2], dump, heap', globals, stats)
-    (NNum _, _) -> ([a2], [arg1, arg2]:dump, heap, globals, stats)
-    _ -> ([a1], [arg1, arg2]:dump, heap, globals, stats)
-  where
-    [a1, a2] = getArgs heap stack
+cmpOp f a b = case (a, b) of
+  (NNum n1, NNum n2) -> NData tag []
+    where
+      tag = if f n1 n2 then 2 else 1
+  _ -> error "cmpOp: not numbers"
 
-primConstr :: TiState -> TypeTag -> Arity -> TiState
-primConstr (stack, dump, heap, globals, stats) tag arity =
+primConstr ::  TypeTag -> Arity -> TiState -> TiState
+primConstr  tag arity (stack, dump, heap, globals, stats) =
   ([an], dump, heap', globals, stats)
   where
     heap' = heapUpdate heap an (NData tag (take arity args))

@@ -9,10 +9,11 @@ data Expr = ExprBinOp BinOp Expr Expr
               | ExprVar String
               | ExprIf Expr Expr Expr
               | ExprApply String [Expr]
+              | ExprTuple [Expr]
               | ExprLet [Decl] Expr
               deriving (Show, Eq)
 
-data Literal = LitInt Integer | LitBool Bool deriving (Show, Eq)
+data Literal = LitInt Integer | LitBool Bool  deriving (Show, Eq)
 
 
 data Decl = Fun String [String] Expr

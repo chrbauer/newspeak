@@ -1,0 +1,6 @@
+K x y = x 
+K1 x y = y 
+fst p = casePair p K
+snd p = casePair p K1
+p = (2, 3)
+main = fst (snd (fst  ((1, (2, 3), 4))))

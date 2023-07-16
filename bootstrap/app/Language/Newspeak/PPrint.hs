@@ -33,7 +33,7 @@ pprintPrimOp Gt = pretty ">"
 pprintPrimOp Geq = pretty ">="
 
 
--- pprintLit :: Lit -> Doc ann
+pprintLit :: Literal -> Doc ann
 pprintLit (LitInt i) = pretty i
 pprintLit (LitBool b) = pretty b
 

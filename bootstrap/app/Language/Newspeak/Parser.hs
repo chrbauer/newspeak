@@ -68,7 +68,8 @@ pInteger :: Parser Expr
 pInteger = ExprLit . LitInt <$> lexeme L.decimal
 
 pLiteral :: Parser Expr
-pLiteral = pInteger <|> pBoolLit
+pLiteral = pInteger <|> pBoolLit 
+
 
 parens :: Parser a -> Parser a
 parens = between (symbol "(") (symbol ")")
@@ -102,13 +103,21 @@ pBoolLit = ExprLit . LitBool <$> (pKeyword "True" $> True <|> pKeyword "False" $
 
 pTerm :: Parser Expr
 pTerm = choice
-  [ parens pExpr
-  , ifThenElse
-  , pLet
+  [ try pTuple
+  , parens pExpr
   , funCall
+  , ifThenElse
+  , pLet  
   , pVariable
-  , pInteger
+  , pLiteral
   ]
+
+pTuple :: Parser Expr
+pTuple = ExprTuple <$> (parens $ do
+  pFirst <- pExpr
+  symbol ","
+  pRest <- pExpr `sepBy` symbol ","
+  return $ (pFirst : pRest))
 
 pExpr :: Parser Expr
 pExpr = makeExprParser pTerm operatorTable
@@ -127,7 +136,7 @@ pLet = L.indentBlock scn p
 funCall :: Parser Expr
 funCall = try $ do
   name <- identifier
-  args <- sepBy pArg sc
+  args <- sepBy1 pArg sc
   return $ ExprApply name args
 
 pArg :: Parser Expr

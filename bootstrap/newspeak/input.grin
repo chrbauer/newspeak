@@ -1,2 +1,7 @@
-f x y = 42
+f x y = 
+  unit 1 ; a ->
+  add a x ; b ->
+  x y z
+
+
 main = f 1 2

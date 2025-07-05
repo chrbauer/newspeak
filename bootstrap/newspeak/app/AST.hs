@@ -10,20 +10,20 @@ data Program = Program (Map.Map Var Binding)
 data Binding = Binding [Var] Exp
   deriving (Show, Eq)
 
-data Exp = SExp SExp
+-- Expressions support simple expressions and sequencing
+-- SExp: Unit wraps a value, App for function call
+data Exp
+  = SExp SExp
+  | Bind Var SExp Exp
   deriving (Show, Eq)
 
-data SExp =
-   Unit Val
-  | App [SVal]
+data SExp
+  = Unit SVal        -- unit <value>
+  | App [SVal]       -- application: first element is function
   deriving (Show, Eq)
 
-data Val = SVal SVal
+data SVal
+  = Literal Int      -- integer literal
+  | Var Var          -- variable
   deriving (Show, Eq)
 
-data SVal =
-    Literal Literal
-  | Var Var
-  deriving (Show, Eq)
-
-type Literal = Int

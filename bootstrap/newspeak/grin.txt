@@ -1,0 +1,29 @@
+prog ::= { binding }+           -- program consists of one or more bindings
+
+binding ::= var { var }+ = exp  -- a function definition: name, one or more args, = expression
+
+exp ::= sexp ; λlpat → exp     -- sequencing (apply then lambda)
+      | case val of { cpat → exp }+  -- case expression (one or more patterns)
+      | sexp                  -- plain simple expression
+
+sexp ::= var { sval }+         -- application: a function or operation
+      | unit val               -- return a value
+      | store val              -- allocate new heap node
+      | fetch var [{n}]        -- load heap node (optionally nth field)
+      | update var val         -- overwrite heap node
+      | ( exp )                -- parenthesized expression
+
+val ::= (tag { sval }*)         -- constructed node with constant tag
+     | (var { sval }*)          -- constructed node with variable tag
+     | tag                      -- single constructor tag
+     | ()                       -- unit (empty tuple)
+     | sval                     -- simple value
+
+sval ::= literal                -- literal constant (e.g., integer)
+      | var                      -- variable
+
+lpat ::= val                    -- lambda pattern matches a value
+
+cpat ::= (tag { var }*)        -- node pattern matching tag + variables
+       | tag                    -- match only on tag
+       | literal                -- match literal value

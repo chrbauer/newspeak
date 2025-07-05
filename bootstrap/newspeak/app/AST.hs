@@ -3,6 +3,7 @@ module AST where
 import qualified Data.Map as Map
 
 type Var = String
+type Literal = Int
 
 data Program = Program (Map.Map Var Binding)
   deriving (Show, Eq)
@@ -15,7 +16,17 @@ data Binding = Binding [Var] Exp
 data Exp
   = SExp SExp
   | Bind Var SExp Exp
+  | Case Val [(CPat, Exp)]
   deriving (Show, Eq)
+
+type Tag = Int
+
+data CPat =
+    TagNPat Tag [Var]
+  | Tag0Pat Tag
+  | LiteralPat Literal
+   deriving (Show, Eq)
+  
 
 data SExp
   = Unit SVal        -- unit <value>
@@ -23,7 +34,14 @@ data SExp
   deriving (Show, Eq)
 
 data SVal
-  = Literal Int      -- integer literal
+  = Literal Literal       -- integer literal
   | Var Var          -- variable
   deriving (Show, Eq)
 
+data Val =
+    TagN Tag [SVal]
+  | Tag0 Tag
+  | EmptyTuple
+  | SVal SVal 
+
+  deriving (Show, Eq)

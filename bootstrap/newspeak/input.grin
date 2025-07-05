@@ -1,7 +1,9 @@
+
 f x y = 
   unit 1 ; a ->
   add a x ; b ->
-  x y z
-
+  case b of
+    0     -> unit 2
+    1 z   -> unit z
 
 main = f 1 2

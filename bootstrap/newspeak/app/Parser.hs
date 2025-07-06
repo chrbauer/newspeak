@@ -2,12 +2,12 @@
 module Parser (pProgram, pBinding, splitBlocks) where
 
 import           AST
-import           Control.Applicative       (empty, (<|>), many, some)
+import           Control.Applicative       (empty, (<|>), many, some, optional)
 import           Data.Void                 (Void)
 import           Data.Map                  (Map)
 import qualified           Data.List                 as L
 import qualified Data.Map                  as Map
-import           Text.Megaparsec           (Parsec, eof, try)
+import           Text.Megaparsec           (Parsec, eof, try, between)
 import qualified Text.Megaparsec.Char.Lexer as L
 import           Text.Megaparsec.Char      (alphaNumChar, letterChar, space1, upperChar, lowerChar)
 import           Text.Megaparsec.Char      (char, string)
@@ -17,7 +17,7 @@ import qualified Data.Set as Set
 type Parser = Parsec Void String
 
 reserved :: Set.Set String
-reserved = Set.fromList ["case", "of"]
+reserved = Set.fromList ["case", "of", "store", "fetch", "update", "unit", "->", ";", "=", "->"]
 
 -- | Whitespace: spaces, tabs, newlines
 sc :: Parser ()
@@ -84,8 +84,13 @@ pCPat =
 -- | Simple expressions: unit <val> or f a b
 pSExp :: Parser SExp
 pSExp =
-      try (Unit <$> (symbol "unit" *> pSVal))
-  <|> App   <$> some pSVal
+      try (Store <$> (symbol "store" *> pSVal))
+  <|> try (Fetch <$> (symbol "fetch" *> identifier)
+                 <*> (Just <$> integer))        -- now parses `fetch p 0`
+  <|> try (Update <$> (symbol "update" *> identifier)
+                  <*> pSVal)
+  <|> try (Unit   <$> (symbol "unit"   *> pSVal))
+  <|> App   <$> some pSVal  
 
 -- | Bind sequence: se ; x -> exp
 pBind :: Parser Exp

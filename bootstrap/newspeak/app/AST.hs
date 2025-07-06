@@ -34,6 +34,9 @@ data CPat =
 data SExp
   = Unit SVal        -- unit <value>
   | App [SVal]       -- application: first element is function
+  | Store  SVal               -- store <value>
+  | Fetch  Var (Maybe Int)    -- fetch p [n]
+  | Update Var SVal           -- update p <value>
   deriving (Show, Eq)
 
 data SVal

@@ -1,9 +1,8 @@
 
-f x y = 
-  unit 1 ; a ->
-  add a x ; b ->
-  case b of
-    CInt    -> unit 2
-    F z   -> unit z
+f x = 
+  store x ; x ->
+  fetch p 0 ; y ->
+  update p y
+  unit y
 
-main = f 1 2
+main = f 42

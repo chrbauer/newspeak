@@ -4,9 +4,16 @@
 const heap = new Map();
 let nextPtr = 0;
 
-function store(val) {
+
+function store(tagOrVal, ...fields) {
   const p = nextPtr++;
-  heap.set(p, { fields: [val] });
+  const node = Array.isArray(fields) && fields.length > 0
+    ? { tag: tagOrVal, fields }
+    : typeof tagOrVal === "string"
+      ? { tag: tagOrVal, fields: [] }
+      : { tag: null, fields: [tagOrVal] };
+
+  heap.set(p, node);
   return p;
 }
 
@@ -26,8 +33,9 @@ function int_print(n) {
   return null;
 }
 
+
 function int_gr(a, b) {
-  return a > b;
+  return a > b ? "CTrue" : "CFalse";
 }
 
 function int_add(a, b) {

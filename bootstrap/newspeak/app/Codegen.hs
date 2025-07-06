@@ -66,11 +66,22 @@ emitExp (Case val branches) =
 emitSExp :: SExp -> String
 emitSExp (Unit val)         = emitVal val
 emitSExp (App (f:xs))        = emitSVal f ++ "(" ++ emitArgList xs ++ ")"
-emitSExp (Store val)        = "store("  ++ emitVal val ++ ")"
 emitSExp (Fetch p (Just i))  = "fetch("  ++ p ++ ", " ++ show i ++ ")"
 emitSExp (Fetch p Nothing)  = "fetch("  ++ p ++ ")"
 emitSExp (Update p val)     = "update(" ++ p ++ ", " ++ emitVal val ++ ")"
 emitSExp (Exp exp)          = "(" ++ emitExp exp ++ ")"  -- ← parentheses
+emitSExp (Store val) = case val of
+  SVal sval            ->
+    "store(" ++ emitSVal sval ++ ")"
+  Tag0 tag             ->
+    "store(\"" ++ tag ++ "\")"
+  TagN tag fields      ->
+    "store(\"" ++ tag ++ "\"," ++ emitFieldList fields ++ ")"
+  EmptyTuple           ->
+    "store()"
+  where
+    emitFieldList :: [SVal] -> String
+    emitFieldList = concat . intersperse ", " . map emitSVal
 
 
 emitSVal :: SVal -> String

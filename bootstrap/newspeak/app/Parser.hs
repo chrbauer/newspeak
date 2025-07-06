@@ -104,14 +104,15 @@ pSExp =
   <|> App   <$> some pSVal  
 
 -- | Bind sequence: se ; x -> exp
+
 pBind :: Parser Exp
 pBind = do
-  se <- pSExp
-  _  <- symbol ";"
-  v  <- identifier
-  _  <- symbol "->"
-  e  <- pExp
-  return (Bind v se e)
+   se  <- pSExp
+   _   <- symbol ";"
+   lp  <- pVal              -- parse a full value pattern, e.g. `(CInt r')` or `x`
+   _   <- symbol "->"
+   e   <- pExp
+   return (Bind lp se e)  
 
 -- | Case expression: case <val> of { pat -> exp, ... }
 pCase :: Parser Exp

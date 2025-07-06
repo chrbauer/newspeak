@@ -15,10 +15,11 @@ data Binding = Binding [Var] Exp
 -- SExp: Unit wraps a value, App for function call
 data Exp
   = SExp SExp
-  | Bind Var SExp Exp
+  | Bind LPat SExp Exp
   | Case Val [(CPat, Exp)]
   deriving (Show, Eq)
 
+type LPat = Val
 type Tag = String
 
 

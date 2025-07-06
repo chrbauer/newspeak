@@ -22,9 +22,38 @@ emitArgs :: [Var] -> String
 emitArgs = concat . intersperse ", "
 
 emitLines :: Exp -> [String]
-emitLines (Bind v se rest) =
-  ("let " ++ v ++ " = " ++ emitSExp se ++ ";")
-  : emitLines rest
+emitLines (Bind lp se rest) =
+  case lp of
+    -- simple variable binder: as before
+    SVal (Var v) ->
+      [ "let " ++ v ++ " = " ++ emitSExp se ++ ";" ]
+      ++ emitLines rest
+
+    -- constructor‐pattern binder: bind the raw node in tmp, then destructure
+    TagN tag fields ->
+      let tmp = "_pat"  -- you can pick any temp name
+          bindNode = "const " ++ tmp ++ " = " ++ emitSExp se ++ ";"
+          varNames     = [ v | Var v <- fields ]
+          destruct = "const [" ++ intercalate ", " varNames ++ "] = " ++ tmp ++ ".fields;"
+      in [ bindNode, destruct ]
+         ++ emitLines rest
+
+    -- nullary constructor pattern: no fields to extract
+    Tag0 tag ->
+      let tmp = "_pat"
+      in [ "const " ++ tmp ++ " = " ++ emitSExp se ++ ";" ]
+         ++ emitLines rest
+
+    -- literal pattern: just bind the value
+    SVal (Literal n) ->
+      [ "const _lit = " ++ show n ++ ";" ]
+      ++ emitLines rest
+
+    -- empty‐tuple pattern: no fields
+    EmptyTuple ->
+      [ "const _pat = " ++ emitSExp se ++ ";" ]
+      ++ emitLines rest
+
 emitLines (SExp se) =
   ["return " ++ emitSExp se ++ ";"]
 emitLines (Case val branches) = emitCase val branches
@@ -117,7 +146,7 @@ emitVal EmptyTuple    = "undefined"
 
 emitExp :: Exp -> String
 emitExp (SExp se)           = emitSExp se
-emitExp (Bind v se rest)    =
+emitExp (Bind (SVal (Var v)) se rest)    =
   let line = "let " ++ v ++ " = " ++ emitSExp se ++ ";"
   in line ++ "\n" ++ emitExp rest
 emitExp (Case val branches) =

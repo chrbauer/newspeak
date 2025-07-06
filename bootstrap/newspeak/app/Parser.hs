@@ -13,6 +13,7 @@ import           Text.Megaparsec.Char      (alphaNumChar, letterChar, space1, up
 import           Text.Megaparsec.Char      (char, string)
 import           Data.Char (isUpper, isLower)
 import qualified Data.Set as Set
+import           Control.Monad              (when)
 
 type Parser = Parsec Void String
 
@@ -29,22 +30,30 @@ lexeme = L.lexeme sc
 symbol :: String -> Parser String
 symbol = L.symbol sc
 
+pFirst :: Parser Char
+pFirst = letterChar <|> char '_'
 
--- identifier that rejects reserved words
-identifier :: Parser Var
-identifier = (lexeme . try) $ do
-  ident <- (:) <$> letterChar <*> many alphaNumChar
-  if ident `Set.member` reserved
-     then fail $ "keyword " ++ show ident ++ " cannot be an identifier"
-     else return ident
+pRest :: Parser Char
+pRest = alphaNumChar <|> char '_' <|> char '\''
 
--- | Upper‐case identifier (constructor tag)
-upperIdent :: Parser String
-upperIdent = lexeme ((:) <$> upperChar <*> many alphaNumChar)
+mkIdent :: Parser Char -> Parser Char -> Parser String
+mkIdent pFirst pRest = lexeme $ try $ do
+  f  <- pFirst
+  rs <- many pRest
+  let ident = f:rs
+  when (ident `Set.member` reserved) $
+    fail $ "keyword " ++ show ident ++ " cannot be an identifier"
+  return ident
 
--- | Lower‐case identifier (variable tag)
+
+identifier :: Parser String
+identifier = mkIdent pFirst pRest
+
 lowerIdent :: Parser String
-lowerIdent = lexeme ((:) <$> lowerChar <*> many alphaNumChar)
+lowerIdent = mkIdent (lowerChar <|> char '_') pRest
+
+upperIdent :: Parser String
+upperIdent = mkIdent (upperChar <|> char '_') pRest
 
 integer :: Parser Int
 integer = lexeme L.decimal

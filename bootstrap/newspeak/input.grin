@@ -1,6 +1,8 @@
 
 f x y = 
-   case b of
+  unit 1 ; a ->
+  add a x ; b ->
+  case b of
     CInt    -> unit 2
     F z   -> unit z
 

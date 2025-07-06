@@ -9,8 +9,9 @@ import qualified           Data.List                 as L
 import qualified Data.Map                  as Map
 import           Text.Megaparsec           (Parsec, eof, try)
 import qualified Text.Megaparsec.Char.Lexer as L
-import           Text.Megaparsec.Char      (alphaNumChar, letterChar, space1)
+import           Text.Megaparsec.Char      (alphaNumChar, letterChar, space1, upperChar, lowerChar)
 import           Text.Megaparsec.Char      (char, string)
+import           Data.Char (isUpper, isLower)
 import qualified Data.Set as Set
 
 type Parser = Parsec Void String
@@ -37,6 +38,13 @@ identifier = (lexeme . try) $ do
      then fail $ "keyword " ++ show ident ++ " cannot be an identifier"
      else return ident
 
+-- | Upper‐case identifier (constructor tag)
+upperIdent :: Parser String
+upperIdent = lexeme ((:) <$> upperChar <*> many alphaNumChar)
+
+-- | Lower‐case identifier (variable tag)
+lowerIdent :: Parser String
+lowerIdent = lexeme ((:) <$> lowerChar <*> many alphaNumChar)
 
 integer :: Parser Int
 integer = lexeme L.decimal
@@ -57,13 +65,21 @@ pVal =
   <|> (Tag0 <$> identifier)
   <|> (SVal <$> pSVal)
 
--- | Constructor patterns
 pCPat :: Parser CPat
 pCPat =
-      try (do t <- identifier
-              vs <- many identifier
-              return (TagNPat t vs))
-  <|> (Tag0Pat     <$> identifier)
+      -- integer literal pattern
+      LiteralPat <$> integer
+  <|> try (do
+        -- lower‐case “constructor” pattern
+        v  <- lowerIdent
+        vs <- many identifier
+        return (TagVarPat v vs))
+  <|> try (do
+        -- upper‐case constructor with fields
+        t  <- upperIdent
+        vs <- many identifier
+        return (TagNPat t vs))
+  <|> (Tag0Pat <$> upperIdent)  
 
 -- | Simple expressions: unit <val> or f a b
 pSExp :: Parser SExp

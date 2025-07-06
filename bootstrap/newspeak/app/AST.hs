@@ -21,8 +21,11 @@ data Exp
 
 type Tag = String
 
+
+
 data CPat =
     TagNPat Tag [Var]
+  | TagVarPat Var [Var]
   | Tag0Pat Tag
   | LiteralPat Literal
    deriving (Show, Eq)

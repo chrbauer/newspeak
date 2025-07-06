@@ -1,8 +1,8 @@
 
 f x = 
-  store x ; x ->
+  store x ; p ->
   fetch p 0 ; y ->
-  update p y
+  update p y ; u ->
   unit y
 
 main = f 42

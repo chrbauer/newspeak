@@ -25,7 +25,7 @@ transpile file = do
       Left err -> die (errorBundlePretty err)
       Right b  -> return b
   let prog = Program (Map.fromList bindings)
-  -- putStrLn (show prog)
+  putStrLn $ "// " ++ (show prog)
   putStrLn (emitJS prog)
 
 

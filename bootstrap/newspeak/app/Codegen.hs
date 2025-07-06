@@ -29,24 +29,48 @@ emitLines (SExp se) =
   ["return " ++ emitSExp se ++ ";"]
 emitLines (Case val branches) = emitCase val branches
 
+
+
 emitCase :: Val -> [(CPat, Exp)] -> [String]
 emitCase val branches =
-     ["switch (" ++ emitVal val ++ ") {"]
-  ++ concatMap emitBranch branches
-  ++ ["}"]
+      ["switch (" ++ emitVal val ++ ") {"]
+   ++ concatMap emitNominal nominalBranches
+   ++ emitDefault defaultBranch
+   ++ ["}"]
   where
-    emitBranch (pat, expr) =
-      let header = case pat of
-            TagNPat t _    -> "case " ++ t ++ ": {"
-            TagVarPat v _  -> "case " ++ v ++ ": {"
-            Tag0Pat t      -> "case " ++ t ++ ":"
-            LiteralPat n   -> "case " ++ show n ++ ":"
+    -- split the list once: at most one TagVarPat is allowed
+    (nominalBranches, defaultBranch) =
+        case span (not . isVarPat . fst) branches of
+          (ns, [])              -> (ns, Nothing)
+          (ns, [varBr])         -> (ns, Just varBr)
+          (_,  _:_:_) -> error "Multiple variable patterns in case"
+
+    isVarPat (TagVarPat _ _) = True
+    isVarPat _               = False
+
+    -- ordinary case labels
+    emitNominal (pat, expr) =
+      let (lbl, vs) = case pat of
+            TagNPat t vs'  -> ("case " ++ show t ++ ": {", vs')
+            Tag0Pat t      -> ("case " ++ show t ++ ":",     [])
+            LiteralPat n   -> ("case " ++ show n ++ ":",     [])
+            _              -> error "unexpected TagVarPat here"
           body = map ("  " ++) (emitLines expr)
-          end  = case pat of
-            TagNPat _ vs    -> ["  // fields: " ++ show vs, "  break;", "}"]
-            TagVarPat _ vs  -> ["  // var‐fields: " ++ show vs, "  break;", "}"]
-            _               -> ["  break;"]
-      in header : body ++ end
+          tailLines =
+            if null vs
+              then ["  break;"]
+              else ["  // TODO: extract fields " ++ show vs, "  break;"]
+      in lbl : body ++ tailLines
+
+    -- default branch from TagVarPat (if present)
+    emitDefault Nothing = []
+    emitDefault (Just (TagVarPat var vs, expr)) =
+      ["default: {"]
+      ++ ["  const " ++ var ++ " = " ++ emitVal (SVal (Var var)) ++ ";"]
+      ++ ["  // TODO: extract fields " ++ show vs | not (null vs)]
+      ++ map ("  " ++) (emitLines expr)
+      ++ ["  break;", "}"]
+      
 
 emitVal :: Val -> String
 emitVal (SVal sval)   = emitSVal sval

@@ -88,7 +88,7 @@ pSExp =
      Exp   <$> between (symbol "(") (symbol ")") pExp
   <|>   try (Store <$> (symbol "store" *> pVal))
   <|> try (Fetch <$> (symbol "fetch" *> identifier)
-                 <*> (Just <$> integer))        -- now parses `fetch p 0`
+                 <*>  optional integer)
   <|> try (Update <$> (symbol "update" *> identifier)
                   <*> pVal)
   <|> try (Unit   <$> (symbol "unit"   *> pVal))

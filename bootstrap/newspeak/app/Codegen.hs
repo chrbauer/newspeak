@@ -68,6 +68,7 @@ emitSExp (Unit val)         = emitVal val
 emitSExp (App (f:xs))        = emitSVal f ++ "(" ++ emitArgList xs ++ ")"
 emitSExp (Store val)        = "store("  ++ emitVal val ++ ")"
 emitSExp (Fetch p (Just i))  = "fetch("  ++ p ++ ", " ++ show i ++ ")"
+emitSExp (Fetch p Nothing)  = "fetch("  ++ p ++ ")"
 emitSExp (Update p val)     = "update(" ++ p ++ ", " ++ emitVal val ++ ")"
 emitSExp (Exp exp)          = "(" ++ emitExp exp ++ ")"  -- ← parentheses
 

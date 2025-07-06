@@ -68,11 +68,11 @@ pSVal = Literal <$> integer
 pVal :: Parser Val
 pVal =
       (EmptyTuple   <$ symbol "()")
-    <|>    between (symbol "(") (symbol ")") pVal  
-  <|> try (do t <- identifier
-              vs <- many pSVal
-              return (TagN t vs))
-  <|> (Tag0 <$> identifier)
+    <|>    between (symbol "(") (symbol ")") pVal
+
+  <|> try (TagN  <$> upperIdent <*> many pSVal)
+  <|>      (Tag0 <$> upperIdent)
+
   <|> (SVal <$> pSVal)
 
 pCPat :: Parser CPat

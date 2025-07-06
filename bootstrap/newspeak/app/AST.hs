@@ -32,11 +32,11 @@ data CPat =
   
 
 data SExp
-  = Unit SVal        -- unit <value>
+  = Unit Val        -- unit <value>
   | App [SVal]       -- application: first element is function
-  | Store  SVal               -- store <value>
+  | Store  Val               -- store <value>
   | Fetch  Var (Maybe Int)    -- fetch p [n]
-  | Update Var SVal           -- update p <value>
+  | Update Var Val           -- update p <value>
   | Exp Exp
   deriving (Show, Eq)
 

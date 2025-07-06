@@ -59,6 +59,7 @@ pSVal = Literal <$> integer
 pVal :: Parser Val
 pVal =
       (EmptyTuple   <$ symbol "()")
+    <|>    between (symbol "(") (symbol ")") pVal  
   <|> try (do t <- identifier
               vs <- many pSVal
               return (TagN t vs))
@@ -85,12 +86,12 @@ pCPat =
 pSExp :: Parser SExp
 pSExp =
      Exp   <$> between (symbol "(") (symbol ")") pExp
-  <|>   try (Store <$> (symbol "store" *> pSVal))
+  <|>   try (Store <$> (symbol "store" *> pVal))
   <|> try (Fetch <$> (symbol "fetch" *> identifier)
                  <*> (Just <$> integer))        -- now parses `fetch p 0`
   <|> try (Update <$> (symbol "update" *> identifier)
-                  <*> pSVal)
-  <|> try (Unit   <$> (symbol "unit"   *> pSVal))
+                  <*> pVal)
+  <|> try (Unit   <$> (symbol "unit"   *> pVal))
   <|> App   <$> some pSVal  
 
 -- | Bind sequence: se ; x -> exp

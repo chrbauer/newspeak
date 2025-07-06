@@ -8,7 +8,7 @@ import qualified Data.Map as Map
 
 emitJS :: Program -> String
 emitJS (Program bindings) =
-     "const rts = require('./rts.js');\n\n"
+     "const { store, fetch, update, int_print, int_gr, int_add } = require('./rts.js');\n\n"
   ++ Map.foldMapWithKey emitBinding bindings
   ++ "\nconsole.log(main());\n"
 
@@ -64,12 +64,11 @@ emitExp (Case val branches) =
 
 
 emitSExp :: SExp -> String
-emitSExp (Unit sval)         = emitSVal sval
-emitSExp (App  (f:xs))       = emitSVal f ++ "(" ++ emitArgList xs ++ ")"
-emitSExp (App  [])           = error "emitSExp: empty application"
-emitSExp (Store sval)        = "rts.store(" ++ emitSVal sval ++ ")"
-emitSExp (Fetch p (Just i))  = "rts.fetch(" ++ p ++ ", " ++ show i ++ ")"
-emitSExp (Update p sval)     = "rts.update(" ++ p ++ ", " ++ emitSVal sval ++ ")"
+emitSExp (Unit val)         = emitVal val
+emitSExp (App (f:xs))        = emitSVal f ++ "(" ++ emitArgList xs ++ ")"
+emitSExp (Store val)        = "store("  ++ emitVal val ++ ")"
+emitSExp (Fetch p (Just i))  = "fetch("  ++ p ++ ", " ++ show i ++ ")"
+emitSExp (Update p val)     = "update(" ++ p ++ ", " ++ emitVal val ++ ")"
 emitSExp (Exp exp)          = "(" ++ emitExp exp ++ ")"  -- ← parentheses
 
 

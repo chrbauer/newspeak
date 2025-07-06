@@ -54,6 +54,15 @@ emitVal (Tag0 t)      = t
 emitVal (TagN t _)    = t
 emitVal EmptyTuple    = "undefined"
 
+emitExp :: Exp -> String
+emitExp (SExp se)           = emitSExp se
+emitExp (Bind v se rest)    =
+  let line = "let " ++ v ++ " = " ++ emitSExp se ++ ";"
+  in line ++ "\n" ++ emitExp rest
+emitExp (Case val branches) =
+  "/* case inside parentheses not supported yet */"
+
+
 emitSExp :: SExp -> String
 emitSExp (Unit sval)         = emitSVal sval
 emitSExp (App  (f:xs))       = emitSVal f ++ "(" ++ emitArgList xs ++ ")"
@@ -61,6 +70,8 @@ emitSExp (App  [])           = error "emitSExp: empty application"
 emitSExp (Store sval)        = "rts.store(" ++ emitSVal sval ++ ")"
 emitSExp (Fetch p (Just i))  = "rts.fetch(" ++ p ++ ", " ++ show i ++ ")"
 emitSExp (Update p sval)     = "rts.update(" ++ p ++ ", " ++ emitSVal sval ++ ")"
+emitSExp (Exp exp)          = "(" ++ emitExp exp ++ ")"  -- ← parentheses
+
 
 emitSVal :: SVal -> String
 emitSVal (Literal n) = show n

@@ -37,6 +37,7 @@ data SExp
   | Store  SVal               -- store <value>
   | Fetch  Var (Maybe Int)    -- fetch p [n]
   | Update Var SVal           -- update p <value>
+  | Exp Exp
   deriving (Show, Eq)
 
 data SVal

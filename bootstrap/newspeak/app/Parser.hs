@@ -84,7 +84,8 @@ pCPat =
 -- | Simple expressions: unit <val> or f a b
 pSExp :: Parser SExp
 pSExp =
-      try (Store <$> (symbol "store" *> pSVal))
+     Exp   <$> between (symbol "(") (symbol ")") pExp
+  <|>   try (Store <$> (symbol "store" *> pSVal))
   <|> try (Fetch <$> (symbol "fetch" *> identifier)
                  <*> (Just <$> integer))        -- now parses `fetch p 0`
   <|> try (Update <$> (symbol "update" *> identifier)

@@ -3,7 +3,7 @@
 module Codegen (emitJS) where
 
 import AST
-import Data.List       (intersperse)
+import Data.List       (intersperse, intercalate)
 import qualified Data.Map as Map
 
 emitJS :: Program -> String
@@ -30,6 +30,40 @@ emitLines (SExp se) =
 emitLines (Case val branches) = emitCase val branches
 
 
+emitCase :: Val -> [(CPat, Exp)] -> [String]
+emitCase val branches =
+     ["switch (" ++ emitVal val ++ ") {"]
+  ++ concatMap emitNominal branches
+  ++ ["}"]
+  where
+    emitNominal (pat, expr) =
+      let
+        -- Build the `case` label and the list of pattern vars
+        (lbl, vs) = case pat of
+          TagNPat t vs'  -> ("case " ++ show t ++ ": {", vs')
+          Tag0Pat t      -> ("case " ++ show t ++ ":",     [])
+          LiteralPat n   -> ("case " ++ show n ++ ":",     [])
+          _              -> error "unexpected variable‐pattern"
+
+        -- Destructure fields _first_, if any
+        extractLines
+          | null vs   = []
+          | otherwise = ["  const [" ++ intercalate ", " vs ++ "] = l2.fields;"]
+        
+        -- Body of the branch
+        bodyLines    = map ("  " ++) (emitLines expr)
+
+        -- Closing lines
+        closingLines = ["  break;", "}"]
+      in
+        -- Concatenate the pieces:
+        [lbl]
+     ++ extractLines
+     ++ bodyLines
+     ++ closingLines
+
+
+{-     
 
 emitCase :: Val -> [(CPat, Exp)] -> [String]
 emitCase val branches =
@@ -56,10 +90,13 @@ emitCase val branches =
             LiteralPat n   -> ("case " ++ show n ++ ":",     [])
             _              -> error "unexpected TagVarPat here"
           body = map ("  " ++) (emitLines expr)
+          -- Destructure the `fields` array into the pattern variables:
+          extractLine
+            | null vs   = []
+            | otherwise = ["  const [" ++ concat (intersperse ", " vs) ++ "] = l2.fields;"]
           tailLines =
-            if null vs
-              then ["  break;"]
-              else ["  // TODO: extract fields " ++ show vs, "  break;"]
+             extractLine
+          tailLines' = tailLines ++ ["  break;", "}"]          
       in lbl : body ++ tailLines
 
     -- default branch from TagVarPat (if present)
@@ -70,7 +107,7 @@ emitCase val branches =
       ++ ["  // TODO: extract fields " ++ show vs | not (null vs)]
       ++ map ("  " ++) (emitLines expr)
       ++ ["  break;", "}"]
-      
+   -}   
 
 emitVal :: Val -> String
 emitVal (SVal sval)   = emitSVal sval

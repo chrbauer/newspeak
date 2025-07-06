@@ -19,7 +19,7 @@ data Exp
   | Case Val [(CPat, Exp)]
   deriving (Show, Eq)
 
-type Tag = Int
+type Tag = String
 
 data CPat =
     TagNPat Tag [Var]

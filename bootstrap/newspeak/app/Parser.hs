@@ -11,8 +11,12 @@ import           Text.Megaparsec           (Parsec, eof, try)
 import qualified Text.Megaparsec.Char.Lexer as L
 import           Text.Megaparsec.Char      (alphaNumChar, letterChar, space1)
 import           Text.Megaparsec.Char      (char, string)
+import qualified Data.Set as Set
 
 type Parser = Parsec Void String
+
+reserved :: Set.Set String
+reserved = Set.fromList ["case", "of"]
 
 -- | Whitespace: spaces, tabs, newlines
 sc :: Parser ()
@@ -24,8 +28,15 @@ lexeme = L.lexeme sc
 symbol :: String -> Parser String
 symbol = L.symbol sc
 
+
+-- identifier that rejects reserved words
 identifier :: Parser Var
-identifier = lexeme ((:) <$> letterChar <*> many alphaNumChar)
+identifier = (lexeme . try) $ do
+  ident <- (:) <$> letterChar <*> many alphaNumChar
+  if ident `Set.member` reserved
+     then fail $ "keyword " ++ show ident ++ " cannot be an identifier"
+     else return ident
+
 
 integer :: Parser Int
 integer = lexeme L.decimal
@@ -36,23 +47,23 @@ pSVal = Literal <$> integer
      <|> Var     <$> identifier
 
 -- | Full Val: empty tuple, tagged node, or simple SVal
+
 pVal :: Parser Val
 pVal =
       (EmptyTuple   <$ symbol "()")
-  <|> try (do t <- integer
+  <|> try (do t <- identifier
               vs <- many pSVal
               return (TagN t vs))
-  <|> (Tag0 <$> integer)
+  <|> (Tag0 <$> identifier)
   <|> (SVal <$> pSVal)
 
 -- | Constructor patterns
 pCPat :: Parser CPat
 pCPat =
-      try (do t <- integer
+      try (do t <- identifier
               vs <- many identifier
               return (TagNPat t vs))
-  <|> (Tag0Pat     <$> integer)
-  <|> (LiteralPat  <$> integer)
+  <|> (Tag0Pat     <$> identifier)
 
 -- | Simple expressions: unit <val> or f a b
 pSExp :: Parser SExp
@@ -85,7 +96,7 @@ pCase = do
 
 -- | Any expression: bind, case, or simple
 pExp :: Parser Exp
-pExp = try pBind <|> try pCase <|> (SExp <$> pSExp)
+pExp = pCase <|> try pBind <|> (SExp <$> pSExp)
 
 -- | One top-level binding: f x y = exp
 pBinding :: Parser (Var, Binding)

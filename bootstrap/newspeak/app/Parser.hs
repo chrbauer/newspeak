@@ -7,7 +7,7 @@ import           Data.Void                 (Void)
 import           Data.Map                  (Map)
 import qualified           Data.List                 as L
 import qualified Data.Map                  as Map
-import           Text.Megaparsec           (Parsec, eof, try, between)
+import           Text.Megaparsec           (Parsec, eof, try, between, sepBy1)
 import qualified Text.Megaparsec.Char.Lexer as L
 import           Text.Megaparsec.Char      (alphaNumChar, letterChar, space1, upperChar, lowerChar)
 import           Text.Megaparsec.Char      (char, string)
@@ -114,22 +114,32 @@ pBind = do
    e   <- pExp
    return (Bind lp se e)  
 
--- | Case expression: case <val> of { pat -> exp, ... }
+-- parse a case expression
 pCase :: Parser Exp
 pCase = do
-  _        <- symbol "case"
-  val      <- pVal
-  _        <- symbol "of"
-  branches <- many $ do
-    pat  <- pCPat
-    _    <- symbol "->"
-    expr <- pExp
-    return (pat, expr)
+  _    <- symbol "case"
+  val  <- pVal                    -- b'
+  _    <- symbol "of"
+  branches <- pBranch `sepBy1` symbol "|"
   return (Case val branches)
 
--- | Any expression: bind, case, or simple
+-- parse one branch: CTrue -> expr
+pBranch :: Parser (CPat, Exp)
+pBranch = do
+  pat <- pCPat                    -- CTrue, CFalse, TagNPat, LiteralPat, …
+  _   <- symbol "->"
+  expr <- pExp
+  return (pat, expr)
+
+-- integrate into your main expression parser:
 pExp :: Parser Exp
-pExp = pCase <|> try pBind <|> (SExp <$> pSExp)
+pExp =   try pBind 
+     <|> (SExp <$> pSExp)
+     <|> pCase                 
+
+-- -- | Any expression: bind, case, or simple
+-- pExp :: Parser Exp
+-- pExp = pCase <|> try pBind <|> (SExp <$> pSExp)
 
 -- | One top-level binding: f x y = exp
 pBinding :: Parser (Var, Binding)

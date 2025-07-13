@@ -39,7 +39,7 @@ function int_print(n) {
 
 
 function int_gr(a, b) {
-  return a > b ? "CTrue" : "CFalse";
+    return  { tag: a > b ? "CTrue" : "CFalse"};
 }
 
 function int_add(a, b) {

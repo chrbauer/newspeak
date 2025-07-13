@@ -110,11 +110,18 @@ emitBranch val (pat, expr) = do
 -- | Primitive emitters
 --------------------------------------------------------------------------------
 
+
+
+-- | Emit a Val as either a JS literal, variable, or full node object
 emitVal :: Val -> String
-emitVal (SVal sval) = emitSVal sval
-emitVal (Tag0 t)    = t
-emitVal (TagN t _)  = t
-emitVal EmptyTuple  = "undefined"
+emitVal (SVal sval)        = emitSVal sval
+emitVal (Tag0 t)           = "\"" ++ t ++ "\""
+emitVal (TagN t fields)    =
+  "{ tag: \"" ++ t ++ "\", fields: ["
+  ++ intercalate ", " (map emitSVal fields)
+  ++ "] }"
+emitVal EmptyTuple         = "undefined"
+
 
 -- | Emit simple expressions (now monadic)
 emitSExp :: SExp -> CG String

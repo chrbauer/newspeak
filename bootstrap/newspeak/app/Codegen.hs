@@ -1,9 +1,13 @@
 module Codegen (emitJS) where
 
 import AST
-import Data.List       (intersperse, intercalate)
+import Data.List        (intercalate)
 import qualified Data.Map as Map
-import Data.Char       (isAlphaNum)
+import Data.Char        (isAlphaNum)
+import Control.Monad.State
+
+-- | Codegen monad carrying the next _pat counter
+type CG = State Int
 
 --------------------------------------------------------------------------------
 -- | Top-level entry
@@ -12,147 +16,146 @@ import Data.Char       (isAlphaNum)
 emitJS :: Program -> String
 emitJS (Program bindings) =
      "const { store, fetch, update, int_print, int_gr, int_add } = require('./rts.js');\n\n"
-  ++ Map.foldMapWithKey emitBinding bindings
+  ++ evalState (fmap concat $ mapM (uncurry emitBinding) (Map.toList bindings)) 0
   ++ "\nconsole.log(main());\n"
 
 --------------------------------------------------------------------------------
 -- | Function bindings
 --------------------------------------------------------------------------------
 
-emitBinding :: Var -> Binding -> String
-emitBinding name (Binding args body) =
-  "function " ++ name ++ "(" ++ emitArgs args ++ ") {\n"
-  ++ unlines (map ("  " ++) (emitLines body))
-  ++ "}\n\n"
-
-emitArgs :: [Var] -> String
-emitArgs = concat . intersperse ", "
+emitBinding :: Var -> Binding -> CG String
+emitBinding name (Binding args body) = do
+  linesBody <- emitLines body
+  let header = "function " ++ name ++ "(" ++ intercalate ", " args ++ ") {\n"
+  return $ header ++ unlines (map ("  " ++) linesBody) ++ "}\n\n"
 
 --------------------------------------------------------------------------------
--- | Line-wise emitter
+-- | Emit a sequence of lines for any Exp
 --------------------------------------------------------------------------------
 
-emitLines :: Exp -> [String]
+emitLines :: Exp -> CG [String]
 emitLines (Bind lp se rest) =
   case lp of
-    -- simple variable binder
-    SVal (Var v) ->
-      [ "let " ++ sanitizeVar v ++ " = " ++ emitSExp se ++ ";" ]
-      ++ emitLines rest
+    SVal (Var v) -> do
+      let line = "let " ++ sanitizeVar v ++ " = " ++ emitSExp se ++ ";"
+      tailLines <- emitLines rest
+      return (line : tailLines)
 
-    -- constructor pattern: allocate tmp, then destructure fields
-    TagN tag fields ->
-      let tmp      = "_pat"
-          bindNode = "const " ++ tmp ++ " = " ++ emitSExp se ++ ";"
-          varNames = [ sanitizeVar v | Var v <- fields ]
-          destruct = "const [" ++ intercalate ", " varNames ++ "] = " ++ tmp ++ ".fields;"
-      in  [bindNode, destruct]
-       ++ emitLines rest
+    TagN _ fields -> do
+      tmp <- freshPat
+      let bindNode = "const " ++ tmp ++ " = " ++ emitSExp se ++ ";"
+          vars     = [ sanitizeVar v | Var v <- fields ]
+          destruct = "const [" ++ intercalate ", " vars ++ "] = " ++ tmp ++ ".fields;"
+      tailLines <- emitLines rest
+      return (bindNode : destruct : tailLines)
 
-    -- nullary constructor
-    Tag0 tag ->
-      let tmp = "_pat"
-      in [ "const " ++ tmp ++ " = " ++ emitSExp se ++ ";" ]
-       ++ emitLines rest
+    Tag0 _ -> do
+      tmp <- freshPat
+      let line = "const " ++ tmp ++ " = " ++ emitSExp se ++ ";"
+      tailLines <- emitLines rest
+      return (line : tailLines)
 
-    -- literal pattern
-    SVal (Literal n) ->
-      [ "const _lit = " ++ show n ++ ";" ]
-      ++ emitLines rest
+    SVal (Literal n) -> do
+      let line = "const _lit = " ++ show n ++ ";"
+      tailLines <- emitLines rest
+      return (line : tailLines)
 
-    -- empty tuple
-    EmptyTuple ->
-      [ "const _pat = " ++ emitSExp se ++ ";" ]
-      ++ emitLines rest
+    EmptyTuple -> do
+      tmp <- freshPat
+      let line = "const " ++ tmp ++ " = " ++ emitSExp se ++ ";"
+      tailLines <- emitLines rest
+      return (line : tailLines)
 
 emitLines (SExp se) =
-  ["return " ++ emitSExp se ++ ";"]
+  return ["return " ++ emitSExp se ++ ";"]
 
 emitLines (Case val branches) =
   emitCase val branches
 
 --------------------------------------------------------------------------------
--- | Case expression emitter
+-- | Fully-monadic case emitter
 --------------------------------------------------------------------------------
 
-emitCase :: Val -> [(CPat, Exp)] -> [String]
-emitCase val branches =
-     ["switch (" ++ emitVal val ++ ") {"]
-  ++ concatMap emitNominal branches
-  ++ ["}"]
- where
-  emitNominal (pat, expr) =
-    let
-      -- case label and vars
-      (lbl, vs) = case pat of
-        TagNPat t vs' -> ("case " ++ show t ++ ": {", vs')
-        Tag0Pat t     -> ("case " ++ show t ++ ":",     [])
-        LiteralPat n  -> ("case " ++ show n ++ ":",     [])
-        _             -> error "unexpected pattern"
+emitCase :: Val -> [(CPat, Exp)] -> CG [String]
+emitCase val branches = do
+  branchLines <- mapM (emitBranch val) branches
+  return $ ["switch (" ++ emitVal val ++ ") {"] ++ concat branchLines ++ ["}"]
 
-      -- destructure if needed
-      extractLines
-        | null vs   = []
-        | otherwise = ["  const [" ++ intercalate ", " (map sanitizeVar vs)
-                       ++ "] = l2.fields;"]
+emitBranch :: Val -> (CPat, Exp) -> CG [String]
+emitBranch val (pat, expr) = do
+  -- label
+  let (lbl, vars) = case pat of
+        TagNPat t vs -> ("case " ++ show t ++ ": {", vs)
+        Tag0Pat t    -> ("case " ++ show t ++ ":", [])
+        LiteralPat n -> ("case " ++ show n ++ ":", [])
+        _            -> error "unexpected pattern"
 
-      bodyLines    = map ("  " ++) (emitLines expr)
-      closingLines = ["  break;", "}"]
-    in
-      [lbl]
-   ++ extractLines
-   ++ bodyLines
-   ++ closingLines
+  -- destructuring
+  let extract
+        | null vars  = []
+        | otherwise  = ["  const [" ++ intercalate ", " (map sanitizeVar vars)
+                        ++ "] = " ++ emitVal val ++ ".fields;"]
+
+  -- body
+  bodyLines <- fmap (map ("  " ++)) (emitLines expr)
+
+  return $ [lbl] ++ extract ++ bodyLines ++ ["  break;", "}"]
 
 --------------------------------------------------------------------------------
 -- | Primitive emitters
 --------------------------------------------------------------------------------
 
 emitVal :: Val -> String
-emitVal (SVal sval)   = emitSVal sval
-emitVal (Tag0 t)      = t
-emitVal (TagN t _)    = t
-emitVal EmptyTuple    = "undefined"
-
-emitExp :: Exp -> String
-emitExp (SExp se)                       = emitSExp se
-emitExp (Bind (SVal (Var v)) se rest)   =
-  let line = "let " ++ sanitizeVar v ++ " = " ++ emitSExp se ++ ";"
-  in line ++ "\n" ++ emitExp rest
-emitExp (Case _ _) =
-  "/* nested case in expression not supported yet */"
+emitVal (SVal sval) = emitSVal sval
+emitVal (Tag0 t)    = t
+emitVal (TagN t _)  = t
+emitVal EmptyTuple  = "undefined"
 
 emitSExp :: SExp -> String
-emitSExp (Unit val)          = emitVal val
-emitSExp (App (f:xs))        = emitSVal f ++ "(" ++ emitArgList xs ++ ")"
-emitSExp (Fetch p (Just i))  = "fetch("  ++ p ++ ", " ++ show i ++ ")"
-emitSExp (Fetch p Nothing)   = "fetch("  ++ p ++ ")"
-emitSExp (Update p val)      = "update(" ++ p ++ ", " ++ emitVal val ++ ")"
-emitSExp (Exp exp)           = "(" ++ emitExp exp ++ ")"
-emitSExp (Store val)         = case val of
-  SVal sval          -> "store(" ++ emitSVal sval ++ ")"
-  Tag0 tag           -> "store(\"" ++ tag ++ "\")"
-  TagN tag fields    -> "store(\"" ++ tag ++ "\"," ++ emitFieldList fields ++ ")"
-  EmptyTuple         -> "store()"
- where
-  emitFieldList :: [SVal] -> String
-  emitFieldList = concat . intersperse ", " . map emitSVal
+emitSExp (Unit val)        = emitVal val
+emitSExp (App (f:xs))      = emitSVal f ++ "(" ++ emitArgList xs ++ ")"
+emitSExp (Fetch p (Just i))  = "fetch(" ++ p ++ ", " ++ show i ++ ")"
+emitSExp (Fetch p Nothing) = "fetch(" ++ p ++ ")"
+emitSExp (Update p v)      = "update(" ++ p ++ ", " ++ emitVal v ++ ")"
+emitSExp (Exp exp)         = "(" ++ evalState (emitExp exp) 0 ++ ")"
+emitSExp (Store val)       = case val of
+  SVal sval        -> "store(" ++ emitSVal sval ++ ")"
+  Tag0 tag         -> "store(\"" ++ tag ++ "\")"
+  TagN tag fields  -> "store(\"" ++ tag ++ "\"," ++ intercalate ", " (map emitSVal fields) ++ ")"
+  EmptyTuple       -> "store()"
+
+emitExp :: Exp -> CG String
+emitExp (SExp se)             = return (emitSExp se)
+emitExp (Bind lp se rest)     = do
+  let lhs = case lp of
+        SVal (Var v) -> sanitizeVar v
+        _            -> "_"
+      line = "let " ++ lhs ++ " = " ++ emitSExp se ++ ";"
+  tail <- emitExp rest
+  return (line ++ "\n" ++ tail)
+emitExp (Case _ _)            = return "/* nested case unsupported */"
+
+emitArgList :: [SVal] -> String
+emitArgList = intercalate ", " . map emitSVal
 
 emitSVal :: SVal -> String
 emitSVal (Literal n) = show n
-emitSVal (Var     v) = sanitizeVar v
-
-emitArgList :: [SVal] -> String
-emitArgList = concat . intersperse ", " . map emitSVal
+emitSVal (Var v)     = sanitizeVar v
 
 --------------------------------------------------------------------------------
--- | Identifier sanitization
+-- | Identifier & pattern helpers
 --------------------------------------------------------------------------------
 
 sanitizeVar :: String -> String
-sanitizeVar = concatMap replace
-  where
-    replace '\'' = "_prime"
-    replace c
-      | isAlphaNum c = [c]
-      | otherwise    = ""
+sanitizeVar = concatMap $ \c ->
+  case c of
+    '\'' -> "_prime"
+    x    | isAlphaNum x -> [x]
+         | otherwise    -> ""
+
+-- | Generate a fresh "_patN" identifier
+freshPat :: CG String
+freshPat = do
+  n <- get
+  put (n + 1)
+  return ("_pat" ++ show n)

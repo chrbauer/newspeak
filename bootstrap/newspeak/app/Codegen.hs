@@ -37,13 +37,15 @@ emitLines :: Exp -> CG [String]
 emitLines (Bind lp se rest) =
   case lp of
     SVal (Var v) -> do
-      let line = "let " ++ sanitizeVar v ++ " = " ++ emitSExp se ++ ";"
+      sexp <- emitSExp se
+      let line = "let " ++ sanitizeVar v ++ " = " ++ sexp ++ ";"
       tailLines <- emitLines rest
       return (line : tailLines)
 
     TagN _ fields -> do
       tmp <- freshPat
-      let bindNode = "const " ++ tmp ++ " = " ++ emitSExp se ++ ";"
+      sexp <- emitSExp se
+      let bindNode = "const " ++ tmp ++ " = " ++ sexp ++ ";"
           vars     = [ sanitizeVar v | Var v <- fields ]
           destruct = "const [" ++ intercalate ", " vars ++ "] = " ++ tmp ++ ".fields;"
       tailLines <- emitLines rest
@@ -51,7 +53,8 @@ emitLines (Bind lp se rest) =
 
     Tag0 _ -> do
       tmp <- freshPat
-      let line = "const " ++ tmp ++ " = " ++ emitSExp se ++ ";"
+      sexp <- emitSExp se
+      let line = "const " ++ tmp ++ " = " ++ sexp ++ ";"
       tailLines <- emitLines rest
       return (line : tailLines)
 
@@ -62,12 +65,14 @@ emitLines (Bind lp se rest) =
 
     EmptyTuple -> do
       tmp <- freshPat
-      let line = "const " ++ tmp ++ " = " ++ emitSExp se ++ ";"
+      sexp <- emitSExp se
+      let line = "const " ++ tmp ++ " = " ++ sexp ++ ";"
       tailLines <- emitLines rest
       return (line : tailLines)
 
-emitLines (SExp se) =
-  return ["return " ++ emitSExp se ++ ";"]
+emitLines (SExp se) = do
+  sexp <- emitSExp se
+  return ["return " ++ sexp ++ ";"]
 
 emitLines (Case val branches) =
   emitCase val branches
@@ -79,7 +84,7 @@ emitLines (Case val branches) =
 emitCase :: Val -> [(CPat, Exp)] -> CG [String]
 emitCase val branches = do
   branchLines <- mapM (emitBranch val) branches
-  return $ ["switch (" ++ emitVal val ++ ") {"] ++ concat branchLines ++ ["}"]
+  return $ ["switch (" ++ emitVal val ++ ".tag) {"] ++ concat branchLines ++ ["}"]
 
 emitBranch :: Val -> (CPat, Exp) -> CG [String]
 emitBranch val (pat, expr) = do
@@ -111,29 +116,42 @@ emitVal (Tag0 t)    = t
 emitVal (TagN t _)  = t
 emitVal EmptyTuple  = "undefined"
 
-emitSExp :: SExp -> String
-emitSExp (Unit val)        = emitVal val
-emitSExp (App (f:xs))      = emitSVal f ++ "(" ++ emitArgList xs ++ ")"
-emitSExp (Fetch p (Just i))  = "fetch(" ++ p ++ ", " ++ show i ++ ")"
-emitSExp (Fetch p Nothing) = "fetch(" ++ p ++ ")"
-emitSExp (Update p v)      = "update(" ++ p ++ ", " ++ emitVal v ++ ")"
-emitSExp (Exp exp)         = "(" ++ evalState (emitExp exp) 0 ++ ")"
+-- | Emit simple expressions (now monadic)
+emitSExp :: SExp -> CG String
+emitSExp (Unit val)        = return (emitVal val)
+emitSExp (App (f:xs))      = do
+  fn  <- return (emitSVal f)
+  as  <- mapM (return . emitSVal) xs
+  return $ fn ++ "(" ++ intercalate ", " as ++ ")"
+                             
+emitSExp (Fetch p mi)      =
+   return $ "fetch(" ++ p ++ maybe "" ((", "++) . show) mi ++ ")"
+emitSExp (Update p v)      =
+   return $ "update(" ++ p ++ ", " ++ emitVal v ++ ")"
+emitSExp (Exp exp)         = do
+   body <- emitExp exp
+   return $ "(" ++ body ++ ")"
 emitSExp (Store val)       = case val of
-  SVal sval        -> "store(" ++ emitSVal sval ++ ")"
-  Tag0 tag         -> "store(\"" ++ tag ++ "\")"
-  TagN tag fields  -> "store(\"" ++ tag ++ "\"," ++ intercalate ", " (map emitSVal fields) ++ ")"
-  EmptyTuple       -> "store()"
+   SVal sval        -> return $ "store(" ++ emitSVal sval ++ ")"
+   Tag0 tag         -> return $ "store(\"" ++ tag ++ "\")"
+   TagN tag fields  -> do
+     fs <- return $ intercalate ", " (map emitSVal fields)
+     return $ "store(\"" ++ tag ++ "\"," ++ fs ++ ")"
+   EmptyTuple       -> return "store()"
+
+  
 
 emitExp :: Exp -> CG String
-emitExp (SExp se)             = return (emitSExp se)
+emitExp (SExp se)             = emitSExp se
 emitExp (Bind lp se rest)     = do
+  sexp <- emitSExp se
   let lhs = case lp of
         SVal (Var v) -> sanitizeVar v
         _            -> "_"
-      line = "let " ++ lhs ++ " = " ++ emitSExp se ++ ";"
+      line = "let " ++ lhs ++ " = " ++ sexp ++ ";"
   tail <- emitExp rest
   return (line ++ "\n" ++ tail)
-emitExp (Case _ _)            = return "/* nested case unsupported */"
+emitExp (Case _ _)            = return "/* TODO: supported nested case */"
 
 emitArgList :: [SVal] -> String
 emitArgList = intercalate ", " . map emitSVal
@@ -150,8 +168,10 @@ sanitizeVar :: String -> String
 sanitizeVar = concatMap $ \c ->
   case c of
     '\'' -> "_prime"
-    x    | isAlphaNum x -> [x]
-         | otherwise    -> ""
+    x    | isAlphaNum x
+         || x == '_'      -> [x]
+         | otherwise       -> ""
+        
 
 -- | Generate a fresh "_patN" identifier
 freshPat :: CG String

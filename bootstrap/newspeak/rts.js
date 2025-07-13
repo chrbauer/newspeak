@@ -17,8 +17,12 @@ function store(tagOrVal, ...fields) {
   return p;
 }
 
-function fetch(p, idx = 0) {
-  const entry = heap.get(p);
+function fetch(p, idx = undefined) {
+    const entry = heap.get(p);
+    console.log(`fetch(${p}, ${idx}) ->`, entry);
+    if(idx === undefined) {
+	return entry;
+    }
   return entry ? entry.fields[idx] : undefined;
 }
 

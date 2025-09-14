@@ -1,0 +1,20 @@
+{
+  "name": "newspeak-repl",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "preview": "vite preview"
+  },
+  "devDependencies": {
+    "typescript": "~5.8.3",
+    "vite": "^7.1.2"
+  },
+  "dependencies": {
+    "@xterm/xterm": "^5.5.0",
+    "wabt": "^1.0.37",
+    "xterm-readline": "^1.1.2"
+  }
+}

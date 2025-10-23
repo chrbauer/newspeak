@@ -11,7 +11,7 @@ runReplIO = runInputT defaultSettings loop
   where
     loop :: InputT IO ()
     loop = do
-      minput <- getInputLine "> "
+      minput <- getInputLine "? "
       case minput of
         Nothing     -> return ()  -- Ctrl-D
         Just ":q"   -> return ()

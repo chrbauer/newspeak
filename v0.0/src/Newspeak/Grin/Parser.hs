@@ -1,35 +1,40 @@
+-- src/Newspeak/Grin/Parser.hs
 module Newspeak.Grin.Parser (parseExpr) where
 
 import Data.Bifunctor (first)
 import Data.Void (Void)
-import Text.Megaparsec
-import Text.Megaparsec.Char
+import Text.Megaparsec (Parsec, runParser, errorBundlePretty, empty, eof, (<?>))
+import Text.Megaparsec.Char (space1)
 import qualified Text.Megaparsec.Char.Lexer as L
 import Control.Monad.Combinators.Expr (makeExprParser, Operator(..))
 import Newspeak.Grin.Ast
 
-type Parser = Parsec Void String
+type P = Parsec Void String
 
--- whitespace
-sc :: Parser ()
+sc :: P ()
 sc = L.space space1 empty empty
-
-lexeme :: Parser a -> Parser a
+lexeme :: P a -> P a
 lexeme = L.lexeme sc
-
-symbol :: String -> Parser String
+symbol :: String -> P String
 symbol = L.symbol sc
 
-integer :: Parser GExpr
-integer = GLit <$> lexeme L.decimal <?> "integer"
+lit :: P GExpr
+lit = GLit <$> lexeme L.decimal <?> "integer"
 
-gexpr :: Parser GExpr
-gexpr = makeExprParser integer table <?> "expression"
+term :: P GExpr
+term = lit
 
-table :: [[Operator Parser GExpr]]
+table :: [[Operator P GExpr]]
 table =
-  [ [ InfixL (GAdd <$ symbol "+") ]
+  [ [ InfixL (bin "*" "*") ]
+  , [ InfixL (bin "+" "+") ]
   ]
+  where
+    bin tok f = GAppl f .: (\a b -> [a,b]) <$ symbol tok
+    (.:) g h x y = g (h x y)
+
+gexpr :: P GExpr
+gexpr = makeExprParser term table <?> "expression"
 
 parseExpr :: String -> Either String GExpr
 parseExpr = first errorBundlePretty . runParser (sc *> gexpr <* eof) "<input>"

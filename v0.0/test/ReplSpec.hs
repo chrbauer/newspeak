@@ -11,5 +11,5 @@ tests = testGroup "REPL"
   , testCase "multiple lines" $
       replPure ["2+2", "3+5", ":quit"] @?= ["4","8"]
   , testCase "parse error reported" $
-      replPure ["2+x", ":q"] @?= ["error: parse error: bad int: \"x\""]
+      replPure ["2+x", ":q"] @?= ["error: <input>:1:3:\n  |\n1 | 2+x\n  |   ^\nunexpected 'x'\nexpecting integer\n"]
   ]

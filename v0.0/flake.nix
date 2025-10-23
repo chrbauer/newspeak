@@ -24,6 +24,7 @@
               hp.tasty
               hp.haskeline
               hp.tasty-hunit
+              hp.megaparsec
               pkgs.ghcid
               pkgs.ormolu # or fourmolu
             ];

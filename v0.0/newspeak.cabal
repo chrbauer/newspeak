@@ -71,7 +71,8 @@ library
     -- Other library packages from which modules are imported.
     build-depends:   
        base >= 4.21 && < 4.22,
-       haskeline
+       haskeline,
+       megaparsec
 
     -- Directories containing source files.
     hs-source-dirs:   src

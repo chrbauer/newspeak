@@ -22,6 +22,7 @@
               hp.cabal-install
               hp.haskell-language-server
               hp.tasty
+              hp.haskeline
               hp.tasty-hunit
               pkgs.ghcid
               pkgs.ormolu # or fourmolu

@@ -1,2 +1,5 @@
 /bootstrap/newspeak/dist-newstyle/
 *~
+.cabal/
+.direnv/
+dist-newstyle/

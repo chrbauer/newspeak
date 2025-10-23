@@ -1,6 +1,6 @@
 module Main where
 
-import Newspeak (repl)
+import Newspeak.Repl (runReplIO)
 
 main :: IO ()
-main = repl
+main = runReplIO

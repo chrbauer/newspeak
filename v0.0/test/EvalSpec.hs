@@ -4,7 +4,6 @@ import Test.Tasty
 import Test.Tasty.HUnit
 import Newspeak (evalExpr)
 
-
 tests :: TestTree
 tests = testGroup "Eval Tests"
   [ testCase "2+2 = 4" $

@@ -31,8 +31,8 @@ import { Readline } from "xterm-readline";
   function wrapWat(userBody: string, wantsResult = true, alsoRegister = false): string {
     return `
 (module
-  (import "env" "memory" (memory 64 1024))
-  (import "env" "table"  (table 256 funcref))
+  (import "env" "memory" (memory $mem 64 1024))
+(import "env" "table"  (table $table 2 funcref))
   (import "rts" "print"       (func $print (param i32 i32)))
   (import "rts" "table_len"   (func $table_len (result i32)))
 
@@ -47,8 +47,8 @@ import { Readline } from "xterm-readline";
     ${alsoRegister ? `
       (local $i i32)
       (local.set $i (call $load_next))
-      (table.set (local.get $i) (ref.func $snippet_fun))
-      (call $store_next (i32.add (local.get $i) (i32.const 1)))
+      (table.set $table  (i32.const 0) $snippet_fun )
+      
     ` : ""}
     ${wantsResult ? "(call $snippet_fun (local.get $ctx))" : ""}
   )
@@ -59,7 +59,9 @@ import { Readline } from "xterm-readline";
   async function buildCallableFromWatBody(userBody: string, opts = { result: true, register: false }) {
       const wat = wrapWat(userBody, opts.result, opts.register);
       console.log(wat);
-    const parsed = wabt.parseWat("snippet.wat", wat);
+      const parsed = wabt.parseWat("snippet.wat", wat, {
+  features: { reference_types: true, bulk_memory: true, multi_value: true }
+});
     const { buffer } = parsed.toBinary({ log: false, write_debug_names: true });
     parsed.destroy();
     const { instance } = await WebAssembly.instantiate(buffer, imports);
@@ -74,7 +76,7 @@ term.loadAddon(rl);
   rl.setCheckHandler((text) => {
     const trimmed = text.trimEnd();
     // Example: require double-ampersand to continue line
-    if (trimmed.endsWith("&&")) return false; // keep reading
+      if (trimmed.endsWith("&&")) return false; // keep reading
     return true; // submit on Enter
   });
 
@@ -82,7 +84,7 @@ term.loadAddon(rl);
     const src = text.replace(/&&\s*$/,"").trim();
     if (!src) { prompt(); return; }
     try {
-      const fn = await buildCallableFromWatBody(src, { result: true, register: false });
+      const fn = await buildCallableFromWatBody(src, { result: true, register: true });
       const res = fn(1);
       print(String(res));
     } catch (e: any) {

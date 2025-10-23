@@ -1,8 +1,19 @@
-module Newspeak (evalExpr, repl) where
+module Newspeak (evalExpr, compileToGrin, runGrin) where
 
+import Newspeak.Grin.Ast
+import Newspeak.Grin.Parser (parseExpr)
+
+compileToGrin :: String -> Either String GExpr
+compileToGrin = parseExpr
+
+runGrin :: GExpr -> Int
+runGrin (GLit n)        = n
+runGrin (GAdd (GLit a) (GLit b)) = a + b
+runGrin _ = error "runtime error: only A+B of literals supported"
+
+-- Kept Int API for now. Errors if parse fails.
 evalExpr :: String -> Int
-evalExpr "2+2" = 4
-evalExpr _     = error "unimplemented"
-
-repl :: IO ()
-repl = putStrLn "Welcome to Newspeak REPL!"
+evalExpr src =
+  case compileToGrin src of
+    Right ge -> runGrin ge
+    Left err  -> error $ "unimplemented: " ++ err 

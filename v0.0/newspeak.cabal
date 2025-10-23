@@ -56,9 +56,11 @@ library
     import:           warnings
 
     -- Modules exported by the library.
-    exposed-modules:  Newspeak,
-      Repl
-
+    exposed-modules:
+      Newspeak
+      Newspeak.Grin.Ast
+      Newspeak.Grin.Parser
+      Newspeak.Repl
 
     -- Modules included in this library but not exported.
     -- other-modules:

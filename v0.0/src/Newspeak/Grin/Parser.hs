@@ -26,9 +26,12 @@ term = lit
 
 table :: [[Operator P GExpr]]
 table =
-  [ [ InfixL (bin "*" "*") ]
-  , [ InfixL (bin "+" "+") ]
-  ]
+  [ [ InfixL (bin "*" "*")
+    , InfixL (bin "//" "//")
+    ]
+    , [ InfixL (bin "+" "+")
+    , InfixL (bin "-" "-")
+    ]]
   where
     bin tok f = GAppl f .: (\a b -> [a,b]) <$ symbol tok
     (.:) g h x y = g (h x y)

@@ -61,7 +61,8 @@ library
       Newspeak.Grin.Ast
       Newspeak.Grin.Parser
       Newspeak.Repl
-
+      Newspeak.Eval
+      Newspeak.Module
     -- Modules included in this library but not exported.
     -- other-modules:
 
@@ -73,8 +74,9 @@ library
        base >= 4.21 && < 4.22,
        haskeline,
        parser-combinators,
-       megaparsec
-
+       megaparsec,
+       containers,
+       mtl
     -- Directories containing source files.
     hs-source-dirs:   src
 
@@ -100,6 +102,8 @@ test-suite newspeak-tests
    build-depends:
      base ^>=4.21,
      newspeak,
+     containers,
+     mtl,
      tasty,
      tasty-hunit
    default-language: GHC2021
